@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+#[Fillable(['name', 'email', 'password', 'avatar_path'])]
+#[Hidden(['password', 'remember_token'])]
+class User extends Authenticatable
+{
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
+
+    protected $appends = [
+        'avatar_url',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if ($this->avatar_path === null || $this->avatar_path === '') {
+            return null;
+        }
+
+        return asset('storage/'.$this->avatar_path);
+    }
+
+    public function creditCards(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CreditCard::class);
+    }
+
+    public function purchases(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    public function responsiblePeople(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ResponsiblePerson::class);
+    }
+
+    public function cardPayments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CardPayment::class);
+    }
+}
