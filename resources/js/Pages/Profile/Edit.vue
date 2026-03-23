@@ -12,39 +12,42 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Perfil" />
+    <Head title="Mi Perfil" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800"
-            >
-                Perfil
-            </h2>
+            <div>
+                <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    Configuración de Perfil
+                </h2>
+                <p class="mt-1 text-sm text-slate-500">Gestiona tu información personal, seguridad y cuenta.</p>
+            </div>
         </template>
 
         <div class="py-12">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
-                    />
+            <div class="mx-auto max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
+                <!-- Informacion del Perfil -->
+                <div class="overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:bg-white/70">
+                    <div class="max-w-2xl">
+                        <UpdateProfileInformationForm
+                            :must-verify-email="mustVerifyEmail"
+                            :status="status"
+                        />
+                    </div>
                 </div>
 
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdatePasswordForm class="max-w-xl" />
+                <!-- Seguridad / Password -->
+                <div class="overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:bg-white/70">
+                    <div class="max-w-2xl">
+                        <UpdatePasswordForm />
+                    </div>
                 </div>
 
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <DeleteUserForm class="max-w-xl" />
+                <!-- Peligro / Delete Account -->
+                <div class="overflow-hidden rounded-[2.5rem] border border-red-50 bg-red-50/10 p-8 shadow-premium backdrop-blur-xl transition-all hover:bg-red-50/20">
+                    <div class="max-w-2xl">
+                        <DeleteUserForm />
+                    </div>
                 </div>
             </div>
         </div>

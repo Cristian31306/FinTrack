@@ -40,6 +40,7 @@ class CreditCardController extends Controller
             'minimum_payment_percent' => ['required', 'numeric', 'min:0.1', 'max:100'],
             'statement_day' => ['required', 'integer', 'min:1', 'max:31'],
             'payment_day' => ['required', 'integer', 'min:1', 'max:31'],
+            'color' => ['required', 'string', 'max:20'],
         ]);
         if (($validated['last_4_digits'] ?? '') === '') {
             $validated['last_4_digits'] = null;
@@ -73,6 +74,7 @@ class CreditCardController extends Controller
             'minimum_payment_percent' => ['required', 'numeric', 'min:0.1', 'max:100'],
             'statement_day' => ['required', 'integer', 'min:1', 'max:31'],
             'payment_day' => ['required', 'integer', 'min:1', 'max:31'],
+            'color' => ['required', 'string', 'max:20'],
         ]);
         if (($validated['last_4_digits'] ?? '') === '') {
             $validated['last_4_digits'] = null;

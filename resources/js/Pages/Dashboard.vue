@@ -28,242 +28,240 @@ function upcomingCardLabel(u) {
 </script>
 
 <template>
-    <Head title="Panel" />
+    <Head title="Panel de Control" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Panel FinTrack
-            </h2>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                        Bienvenido, {{ $page.props.auth.user.name }}
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-500">Aquí tienes un resumen de tus finanzas y próximos pagos.</p>
+                </div>
+                <div class="hidden sm:block">
+                    <Link
+                        :href="route('purchases.create')"
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-brand-500 hover:shadow-brand-500/25 active:scale-95"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Nueva Compra
+                    </Link>
+                </div>
+            </div>
         </template>
 
-        <div class="py-8">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    v-if="alerts?.length"
-                    class="space-y-2"
+        <div class="pb-12 pt-4">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <!-- Alerts Section -->
+                <transition-group 
+                    enter-active-class="transition duration-300 ease-out"
+                    enter-from-class="transform translate-y-4 opacity-0"
+                    enter-to-class="transform translate-y-0 opacity-100"
+                    leave-active-class="transition duration-200 ease-in"
+                    leave-from-class="transform translate-y-0 opacity-100"
+                    leave-to-class="transform translate-y-4 opacity-0"
+                    tag="div"
+                    class="mb-8 space-y-3"
                 >
                     <div
                         v-for="(a, i) in alerts"
                         :key="i"
-                        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        class="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm font-medium text-amber-800 shadow-sm backdrop-blur-sm"
                     >
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
                         {{ a.message }}
                     </div>
-                </div>
+                </transition-group>
 
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div
-                        class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                    >
-                        <p class="text-sm font-medium text-gray-500">
-                            Deuda total estimada
-                        </p>
-                        <p class="mt-1 text-2xl font-semibold text-gray-900">
-                            {{ money(total_debt) }}
-                        </p>
+                <!-- Bento Stats Grid -->
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:shadow-premium-hover">
+                        <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-brand-50 opacity-50 transition-transform group-hover:scale-110"></div>
+                        <div class="relative">
+                            <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">Deuda Total Estimada</p>
+                            <h3 class="mt-2 font-outfit text-4xl font-black tracking-tight text-slate-900">
+                                {{ money(total_debt) }}
+                            </h3>
+                            <div class="mt-6 flex items-center gap-2">
+                                <span class="inline-flex h-2 w-2 rounded-full bg-brand-500 animate-pulse"></span>
+                                <span class="text-xs font-bold text-slate-400 capitalize">Actualizado hace un momento</span>
+                            </div>
+                        </div>
                     </div>
-                    <div
-                        class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                    >
-                        <p class="text-sm font-medium text-gray-500">
-                            Tu parte (compras compartidas)
-                        </p>
-                        <p class="mt-1 text-2xl font-semibold text-gray-900">
-                            {{ money(user_share_pending) }}
-                        </p>
+
+                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:shadow-premium-hover md:col-span-1">
+                        <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-50 opacity-50 transition-transform group-hover:scale-110"></div>
+                        <div class="relative">
+                            <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">Tu Parte (Compartidas)</p>
+                            <h3 class="mt-2 font-outfit text-4xl font-black tracking-tight text-emerald-600">
+                                {{ money(user_share_pending) }}
+                            </h3>
+                            <div class="mt-6">
+                                <Link :href="route('purchases.index')" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors uppercase tracking-widest">Ver consumos →</Link>
+                            </div>
+                        </div>
                     </div>
-                    <div
-                        class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:col-span-2 lg:col-span-1"
-                    >
-                        <p class="text-sm font-medium text-gray-500">
-                            Acciones rápidas
-                        </p>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <Link
-                                :href="route('purchases.create')"
-                                class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                            >
-                                Nueva compra
-                            </Link>
-                            <Link
-                                :href="route('credit-cards.create')"
-                                class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                                Nueva tarjeta
-                            </Link>
+
+                    <div class="group relative overflow-hidden rounded-[2rem] border border-brand-100 bg-gradient-to-br from-brand-600 to-brand-500 p-8 shadow-2xl transition-all hover:-translate-y-1 md:col-span-2 lg:col-span-1">
+                        <div class="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white/10 opacity-20"></div>
+                        <div class="relative flex flex-col h-full justify-between">
+                            <div>
+                                <p class="text-sm font-semibold tracking-wide text-white/80 uppercase">Accesos Rápidos</p>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <Link :href="route('purchases.create')" class="bg-white/20 hover:bg-white/30 text-white rounded-xl px-4 py-2 text-xs font-bold backdrop-blur-md transition-all">Nueva Compra</Link>
+                                    <Link :href="route('credit-cards.create')" class="bg-white/20 hover:bg-white/30 text-white rounded-xl px-4 py-2 text-xs font-bold backdrop-blur-md transition-all">Nueva Tarjeta</Link>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-white/10">
+                                <p class="text-[10px] text-white/60 uppercase font-black tracking-[0.2em]">FinTrack Premium v2.1</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid gap-6 lg:grid-cols-2">
-                    <div
-                        class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                    >
-                        <h3 class="text-lg font-medium text-gray-900">
-                            Uso por tarjeta
-                        </h3>
-                        <ul class="mt-4 space-y-4">
-                            <li
+                <div class="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2">
+                    <!-- Usage by Card -->
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="font-outfit text-2xl font-black text-slate-900">Uso por Tarjeta</h3>
+                            <Link :href="route('credit-cards.index')" class="text-xs font-bold text-brand-600 uppercase tracking-widest hover:underline">Gestionar</Link>
+                        </div>
+                        <div class="grid gap-4">
+                            <div
                                 v-for="c in cards"
                                 :key="c.id"
+                                class="overflow-hidden rounded-3xl border border-white bg-white/40 p-6 shadow-premium backdrop-blur-sm transition-all hover:bg-white/60"
                             >
-                                <div class="flex justify-between text-sm">
-                                    <span class="font-medium text-gray-800">
-                                        {{ formatCardLabel(c) }}
-                                    </span>
-                                    <span class="text-gray-600"
-                                        >{{ money(c.debt) }} /
-                                        {{ money(c.credit_limit) }}</span
-                                    >
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p class="font-outfit text-lg font-black text-slate-900 tracking-tight">
+                                            {{ formatCardLabel(c) }}
+                                        </p>
+                                        <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Cupo: {{ money(c.credit_limit) }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-outfit text-xl font-bold text-slate-900">{{ money(c.debt) }}</p>
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Deuda Actual</p>
+                                    </div>
                                 </div>
-                                <div
-                                    class="mt-1 h-2 overflow-hidden rounded-full bg-gray-100"
-                                >
+                                <div class="relative h-2 w-full overflow-hidden rounded-full bg-slate-100/50 shadow-inner">
                                     <div
-                                        class="h-full rounded-full bg-indigo-500 transition-all"
-                                        :style="{
-                                            width: `${Math.min(
-                                                100,
-                                                c.utilization_percent,
-                                            )}%`,
-                                        }"
+                                        class="absolute inset-y-0 left-0 rounded-full transition-all duration-1000"
+                                        :class="c.utilization_percent >= 80 ? 'bg-amber-500' : 'bg-brand-500'"
+                                        :style="{ width: `${Math.min(100, c.utilization_percent)}%` }"
                                     />
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500">
-                                    {{ c.utilization_percent }}% del cupo
-                                </p>
-                                <p
-                                    v-if="c.cupo_alert"
-                                    class="mt-1.5 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900"
-                                >
-                                    Alto uso de cupo (≥80%). Considera pagar o
-                                    revisar cargos.
-                                </p>
-                            </li>
-                            <li
-                                v-if="!cards?.length"
-                                class="text-sm text-gray-500"
-                            >
-                                Aún no hay tarjetas.
-                                <Link
-                                    :href="route('credit-cards.create')"
-                                    class="text-indigo-600 underline"
-                                    >Crear una</Link
-                                >
-                            </li>
-                        </ul>
+                                <div class="mt-3 flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                    <span :class="c.utilization_percent >= 80 ? 'text-amber-600' : 'text-slate-400'">
+                                        {{ c.utilization_percent }}% Utilizado
+                                    </span>
+                                    <span v-if="c.cupo_alert" class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">⚠️ Alto Uso</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div
-                        class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                    >
-                        <h3 class="text-lg font-medium text-gray-900">
-                            Próximo corte a atender
-                        </h3>
-                        <p class="mt-1 text-xs text-gray-500">
-                            Si hay un corte ya cerrado sin pagar, se muestra
-                            primero; si no, el del cierre más próximo.
-                        </p>
-                        <ul class="mt-4 divide-y divide-gray-100 text-sm">
-                            <li
-                                v-for="u in upcoming_cuts"
+                    <!-- Next Cut Section -->
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="font-outfit text-2xl font-black text-slate-900">Próximo Corte</h3>
+                            <Link :href="route('cuts.index')" class="text-xs font-bold text-brand-600 uppercase tracking-widest hover:underline">Ver Todos</Link>
+                        </div>
+                        
+                        <div v-if="upcoming_cuts?.length">
+                            <div 
+                                v-for="u in upcoming_cuts" 
                                 :key="u.cut_id"
-                                class="py-3"
+                                class="overflow-hidden rounded-[2.5rem] border border-white bg-white/70 shadow-2xl backdrop-blur-2xl"
                             >
-                                <div class="flex justify-between gap-3">
-                                    <div>
-                                        <p class="font-medium text-gray-800">
-                                            {{ upcomingCardLabel(u) }}
-                                        </p>
-                                        <p class="text-gray-500">
-                                            Cierre
-                                            {{ formatDateDMY(u.period_end) }} ·
-                                            {{ u.status_label }}
-                                        </p>
-                                        <p
-                                            v-if="
-                                                u.focus_context ===
-                                                'corte_anterior'
-                                            "
-                                            class="mt-1 text-xs font-medium text-amber-800"
-                                        >
-                                            Prioridad: saldo de un corte ya
-                                            cerrado.
-                                        </p>
-                                        <p
-                                            v-else-if="
-                                                u.focus_context ===
-                                                'proximo_cierre'
-                                            "
-                                            class="mt-1 text-xs text-gray-600"
-                                        >
-                                            Próximo cierre / periodo en curso.
-                                        </p>
-                                    </div>
-                                    <div class="shrink-0 text-right">
-                                        <p class="font-semibold text-gray-900">
-                                            {{ money(u.remaining) }}
-                                        </p>
-                                        <Link
-                                            :href="route('cuts.show', u.cut_id)"
-                                            class="text-xs text-indigo-600 hover:underline"
-                                        >
-                                            Ver corte
-                                        </Link>
-                                    </div>
-                                </div>
-                                <details
-                                    v-if="u.movements?.length"
-                                    class="mt-2 rounded-md border border-gray-100 bg-gray-50/80 px-3 py-2 text-xs"
-                                >
-                                    <summary
-                                        class="cursor-pointer font-medium text-indigo-700 hover:text-indigo-900"
-                                    >
-                                        Movimientos del corte ({{
-                                            u.movements.length
-                                        }})
-                                    </summary>
-                                    <ul class="mt-2 space-y-3 border-t border-gray-200 pt-2">
-                                        <li
-                                            v-for="(m, mi) in u.movements"
-                                            :key="mi"
-                                        >
-                                            <p class="font-medium text-gray-800">
-                                                {{ m.purchase_name }} · Cuota
-                                                {{ m.installment_label }}
+                                <div class="p-8">
+                                    <div class="flex justify-between items-start mb-8">
+                                        <div>
+                                            <div :class="[
+                                                'mb-3 inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm',
+                                                u.focus_context === 'corte_anterior' ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700'
+                                            ]">
+                                                {{ u.focus_context === 'corte_anterior' ? 'Prioridad: Saldo Pendiente' : 'Cierre Próximo' }}
+                                            </div>
+                                            <h4 class="font-outfit text-2xl font-black text-slate-900 tracking-tight">
+                                                {{ upcomingCardLabel(u) }}
+                                            </h4>
+                                            <p class="text-sm font-medium text-slate-500">
+                                                Cierre: <span class="text-slate-900">{{ formatDateDMY(u.period_end) }}</span>
                                             </p>
-                                            <p class="text-gray-600">
-                                                {{ money(m.amount) }} · Cierre
-                                                de cuota
-                                                {{
-                                                    formatDateDMY(
-                                                        m.statement_close_date,
-                                                    )
-                                                }}
-                                            </p>
-                                            <ul
-                                                class="ms-3 mt-1 list-disc text-gray-600"
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-outfit text-3xl font-black text-brand-600">{{ money(u.remaining) }}</p>
+                                            <Link :href="route('cuts.show', u.cut_id)" class="mt-2 inline-flex font-bold text-xs text-brand-600 uppercase tracking-widest hover:underline">Pagar ahora →</Link>
+                                        </div>
+                                    </div>
+
+                                    <!-- Summary by Person (Who owes what) -->
+                                    <div v-if="u.summary_by_party?.length" class="mb-8 rounded-3xl bg-slate-50/50 p-6 shadow-inner ring-1 ring-slate-100">
+                                        <p class="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Distribución de Deuda</p>
+                                        <div class="grid gap-3">
+                                            <div 
+                                                v-for="p in u.summary_by_party" 
+                                                :key="p.label"
+                                                class="flex items-center justify-between"
                                             >
-                                                <li
-                                                    v-for="(party, pi) in m.parties"
-                                                    :key="pi"
-                                                >
-                                                    {{ party.label }}:
-                                                    {{ money(party.amount) }}
-                                                </li>
-                                            </ul>
-                                        </li>
-                                    </ul>
-                                </details>
-                            </li>
-                            <li
-                                v-if="!upcoming_cuts?.length"
-                                class="py-4 text-gray-500"
-                            >
-                                Sin saldos pendientes en cortes.
-                            </li>
-                        </ul>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="h-1.5 w-1.5 rounded-full bg-brand-400"></div>
+                                                    <span class="text-sm font-bold text-slate-700">{{ p.label }}</span>
+                                                </div>
+                                                <span class="font-outfit text-sm font-black text-slate-900">{{ money(p.amount) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Movement Accordion -->
+                                    <details v-if="u.movements?.length" class="group">
+                                        <summary class="flex cursor-pointer list-none items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition-all hover:ring-brand-500/20">
+                                            <div class="flex items-center gap-3">
+                                                <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 text-[10px] font-black text-slate-600">{{ u.movements.length }}</span>
+                                                <span class="text-sm font-bold text-slate-700">Detalle de movimientos</span>
+                                            </div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </summary>
+                                        <div class="mt-4 space-y-4 px-2 pb-2 overflow-hidden transition-all duration-300">
+                                            <div v-for="(m, mi) in u.movements" :key="mi" class="rounded-2xl border border-slate-50 bg-white/50 p-4">
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p class="text-xs font-black uppercase tracking-tight text-slate-900">{{ m.purchase_name }}</p>
+                                                        <p class="text-[10px] font-bold text-slate-400">Cuota {{ m.installment_label }}</p>
+                                                    </div>
+                                                    <p class="font-outfit text-sm font-bold text-slate-900">{{ money(m.amount) }}</p>
+                                                </div>
+                                                <div v-if="m.parties.length > 1" class="pt-2 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
+                                                    <div v-for="party in m.parties" :key="party.label" class="text-[10px] font-bold">
+                                                        <span class="text-slate-400">{{ party.label }}:</span>
+                                                        <span class="ml-1 text-slate-600">{{ money(party.amount) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="rounded-[2.5rem] bg-slate-100/50 p-12 text-center">
+                            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-200 text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Sin cortes pendientes</p>
+                            <p class="mt-2 text-xs text-slate-400">Todo está al día por ahora.</p>
+                        </div>
                     </div>
                 </div>
             </div>

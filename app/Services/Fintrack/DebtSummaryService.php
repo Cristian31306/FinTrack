@@ -196,6 +196,19 @@ class DebtSummaryService
                 ];
             }
             $row['movements'] = $movements;
+            
+            // Summarize by party for the entire cut
+            $partySummary = [];
+            foreach ($movements as $m) {
+                foreach ($m['parties'] as $p) {
+                    $lbl = $p['label'];
+                    $partySummary[$lbl] = ($partySummary[$lbl] ?? 0.0) + $p['amount'];
+                }
+            }
+            $row['summary_by_party'] = collect($partySummary)->map(fn($amt, $lbl) => [
+                'label' => $lbl,
+                'amount' => round($amt, 2),
+            ])->values()->toArray();
         }
         unset($row);
     }

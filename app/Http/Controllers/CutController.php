@@ -54,9 +54,7 @@ class CutController extends Controller
 
         $card = $cut->creditCard;
         $pct = (float) ($card->minimum_payment_percent ?? 5);
-        $suggestedMinimum = $remaining <= 0.01
-            ? 0.0
-            : min($remaining, max(round($remaining * ($pct / 100), 2), 0.01));
+        $suggestedMinimum = round($remaining, 2);
 
         return Inertia::render('Cuts/Show', [
             'cut' => $cut,
@@ -65,9 +63,7 @@ class CutController extends Controller
             'suggested_minimum' => round($suggestedMinimum, 2),
             'minimum_percent' => $pct,
             'payment_types' => [
-                ['value' => 'minimo', 'label' => 'Pago mínimo'],
-                ['value' => 'total', 'label' => 'Pago total del corte'],
-                ['value' => 'abono', 'label' => 'Abono'],
+                ['value' => 'minimo', 'label' => 'Pago mínimo del corte'],
             ],
         ]);
     }

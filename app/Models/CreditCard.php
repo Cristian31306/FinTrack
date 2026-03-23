@@ -18,6 +18,7 @@ class CreditCard extends Model
         'minimum_payment_percent',
         'statement_day',
         'payment_day',
+        'color',
     ];
 
     protected function casts(): array

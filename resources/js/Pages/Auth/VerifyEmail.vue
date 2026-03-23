@@ -6,6 +6,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     status: { type: String },
+    email: { type: String },
 });
 
 const form = useForm({});
@@ -36,7 +37,7 @@ const verificationLinkSent = computed(
             v-if="verificationLinkSent"
             class="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800"
         >
-            Te enviamos un nuevo enlace al correo que usaste al registrarte.
+            Te enviamos un nuevo enlace al correo <b>{{ email }}</b> que usaste al registrarte.
         </div>
 
         <form @submit.prevent="submit">
