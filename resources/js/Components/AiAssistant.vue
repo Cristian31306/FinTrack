@@ -351,9 +351,7 @@ const selectQuickAction = (action) => {
                     </form>
                     <div class="text-center mt-2 flex items-center justify-center gap-1.5">
                         <Sparkles class="h-3 w-3 text-brand-400" />
-                        <span class="text-[10px] text-slate-400 font-medium tracking-wide">Multimodal. Powered by Gemini
-                            2.5
-                            Flash</span>
+                        <span class="text-[10px] text-slate-400 font-medium tracking-wide">Multimodal. Powered by Llama 3.3</span>
                     </div>
                 </div>
             </div>
