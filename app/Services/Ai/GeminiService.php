@@ -11,13 +11,19 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     protected string $apiKey;
-    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
     public function __construct(
         protected DebtSummaryService $summaryService,
         protected PurchaseService $purchaseService
     ) {
         $this->apiKey = config('services.gemini.key');
+    }
+
+    protected function getApiUrl(): string
+    {
+        $model = config('services.gemini.model', 'gemini-2.0-flash-lite');
+        return $this->baseUrl . $model . ':generateContent';
     }
 
     public function chat(User $user, string $message, array $history = [], ?array $image = null): string
@@ -109,7 +115,7 @@ class GeminiService
         try {
             $response = Http::withoutVerifying()
                 ->withHeaders(['Content-Type' => 'application/json'])
-                ->post($this->apiUrl . '?key=' . $this->apiKey, [
+                ->post($this->getApiUrl() . '?key=' . $this->apiKey, [
                     'contents' => $contents,
                     'tools' => $tools,
                     'generationConfig' => [
