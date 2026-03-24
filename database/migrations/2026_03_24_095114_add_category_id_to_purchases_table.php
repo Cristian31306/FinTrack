@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->foreignId('category_id')->nullable()->after('credit_card_id')->constrained()->nullOnDelete();
-        });
+        if (!Schema::hasColumn('purchases', 'category_id')) {
+            Schema::table('purchases', function (Blueprint $table) {
+                $table->foreignId('category_id')->nullable()->after('credit_card_id')->constrained()->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -21,8 +23,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('purchases', function (Blueprint $table) {
-            //
-        });
+        if (Schema::hasColumn('purchases', 'category_id')) {
+            Schema::table('purchases', function (Blueprint $table) {
+                $table->dropForeign(['category_id']);
+                $table->dropColumn('category_id');
+            });
+        }
     }
 };

@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('credit_cards', function (Blueprint $table) {
-            $table->string('color', 20)->default('#4f46e5')->after('payment_day');
-        });
+        if (!Schema::hasColumn('credit_cards', 'color')) {
+            Schema::table('credit_cards', function (Blueprint $table) {
+                $table->string('color', 20)->default('#4f46e5')->after('payment_day');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('credit_cards', function (Blueprint $table) {
-            $table->dropColumn('color');
-        });
+        if (Schema::hasColumn('credit_cards', 'color')) {
+            Schema::table('credit_cards', function (Blueprint $table) {
+                $table->dropColumn('color');
+            });
+        }
     }
 };
