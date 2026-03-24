@@ -9,6 +9,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 const form = useForm({
     name: '',
     email: '',
+    phone_number: '',
     password: '',
     password_confirmation: '',
 });
@@ -72,6 +73,27 @@ const submit = () => {
                 <InputError
                     class="mt-2"
                     :message="form.errors.email"
+                />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel
+                    for="phone_number"
+                    value="WhatsApp (Formato internacional: +57...)"
+                />
+
+                <TextInput
+                    id="phone_number"
+                    v-model="form.phone_number"
+                    type="text"
+                    class="mt-1 block w-full border-slate-300"
+                    placeholder="+57300..."
+                    required
+                />
+
+                <InputError
+                    class="mt-2"
+                    :message="form.errors.phone_number"
                 />
             </div>
 

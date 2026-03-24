@@ -18,6 +18,7 @@ const user = page.props.auth.user;
 
 const name = ref(user.name);
 const email = ref(user.email);
+const phone_number = ref(user.phone_number ?? '');
 const avatar = ref(null);
 
 function onAvatar(e) {
@@ -29,6 +30,7 @@ function submitProfile() {
     fd.append('_method', 'patch');
     fd.append('name', name.value);
     fd.append('email', email.value);
+    fd.append('phone_number', phone_number.value);
     if (avatar.value) {
         fd.append('avatar', avatar.value);
     }
@@ -134,6 +136,27 @@ function submitProfile() {
                     <InputError
                         class="mt-2"
                         :message="page.props.errors?.email"
+                    />
+                </div>
+
+                <div>
+                    <InputLabel
+                        for="phone_number"
+                        value="WhatsApp (Formato internacional)"
+                        class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500"
+                    />
+
+                    <input
+                        id="phone_number"
+                        v-model="phone_number"
+                        type="text"
+                        placeholder="+57300..."
+                        class="block w-full rounded-2xl border-slate-200 bg-white shadow-sm focus:border-brand-500 focus:ring-brand-500/20 px-4 py-3 transition-all font-medium text-slate-700"
+                    />
+
+                    <InputError
+                        class="mt-2"
+                        :message="page.props.errors?.phone_number"
                     />
                 </div>
             </div>

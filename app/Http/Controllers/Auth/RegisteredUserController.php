@@ -34,14 +34,25 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'phone_number' => 'required|string|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
         ]);
+
+        // Enviar mensaje de bienvenida por WhatsApp
+        try {
+            $whatsappService = app(\App\Services\Ai\WhatsAppService::class);
+            $message = "¡Hola {$user->name}! Bienvenido a FinTrack AI. Ya puedes registrar tus gastos enviándome un mensaje o una foto de tus recibos por este medio. 🚀";
+            $whatsappService->sendMessage("whatsapp:{$user->phone_number}", $message);
+        } catch (\Exception $e) {
+            \Log::error("Error enviando bienvenida WhatsApp: " . $e->getMessage());
+        }
 
         event(new Registered($user));
 
