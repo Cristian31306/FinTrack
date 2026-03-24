@@ -10,23 +10,24 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
-class GeminiService
+class AiAssistantService
 {
     protected string $apiKey;
     protected string $baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
+    // Modelos Groq (Llama 3.3 para texto, 3.2 para visión)
     protected string $textModel   = 'llama-3.3-70b-versatile';
     protected string $visionModel = 'llama-3.2-11b-vision-preview';
 
     public function __construct(
-        protected DebtSummaryService $summaryService,
-        protected PurchaseService $purchaseService
+        protected PurchaseService $purchaseService,
+        protected DebtSummaryService $summaryService
     ) {
         $this->apiKey = config('services.groq.key');
     }
 
     /**
-     * Lógica principal del Chat AI (Groq/Llama)
+     * Punto de entrada principal para el chat (Texto/Herramientas)
      */
     public function chat(User $user, string $message, array $history = [], ?array $image = null): string
     {
@@ -44,7 +45,7 @@ class GeminiService
 
             $role = ($msg['role'] ?? 'bot') === 'bot' ? 'assistant' : 'user';
 
-            // Si es un mensaje del bot que parece una vista previa, lo marcamos como tool_call
+            // Si es un mensaje del bot que parece una vista previa (tabla markdown), lo marcamos como tool_call
             // Esto ayuda al modelo a entender el estado de la conversación (evita bucles)
             if ($role === 'assistant' && str_contains($content, 'Vista previa del registro')) {
                 $messages[] = [
@@ -61,7 +62,6 @@ class GeminiService
                         ]
                     ]
                 ];
-                // Y añadimos la respuesta de la herramienta (el texto que el usuario ve)
                 $messages[] = [
                     'role' => 'tool',
                     'tool_call_id' => $messages[count($messages)-1]['tool_calls'][0]['id'],
@@ -83,8 +83,8 @@ class GeminiService
         // Definición de Herramientas
         $tools = $this->getToolsDefinition();
 
-        // Determinar si debemos forzar create_purchase (si la intención es clara)
-        $confirms = ['si', 'sí', 'dale', 'ok', 'confirmado', 'registrar', 'procede'];
+        // Determinar si debemos forzar create_purchase (si la intención es clara de confirmar)
+        $confirms = ['si', 'sí', 'dale', 'ok', 'confirmado', 'registrar', 'procede', 'págalo', 'hágale', 'adelante'];
         $isConfirm = false;
         $lowerMsg = strtolower($message);
         foreach ($confirms as $c) {
@@ -104,11 +104,9 @@ class GeminiService
                 'max_tokens'  => 1024,
             ];
 
-            $response = Http::withoutVerifying()
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                ])
-                ->post($this->baseUrl, $payload);
+            $response = Http::withoutVerifying()->withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl, $payload);
 
             if ($response->failed()) {
                 Log::error('Groq Error: ' . $response->body());
@@ -118,43 +116,38 @@ class GeminiService
             $data   = $response->json();
             $choice = $data['choices'][0]['message'] ?? null;
 
-            if (!$choice) {
-                return "No pude generar una respuesta clara.";
-            }
+            if (!$choice) return "No obtuve respuesta del cerebro.";
 
-            // --- PROCESAMIENTO DE HERRAMIENTAS (Function Calling) ---
+            // --- MANEJO DE FUNCTION CALLING ---
             if (!empty($choice['tool_calls'])) {
-                $toolCall = $choice['tool_calls'][0];
-                $funcName = $toolCall['function']['name'];
-                $args     = json_decode($toolCall['function']['arguments'], true);
+                $call = $choice['tool_calls'][0];
+                $funcName = $call['function']['name'];
+                $args     = json_decode($call['function']['arguments'], true) ?? [];
 
                 return match ($funcName) {
                     'prepare_purchase' => $this->handlePrepare($args, $user, $context),
                     'create_purchase'  => $this->handleExecute($user),
-                    default            => "Función no reconocida por el sistema.",
+                    default            => "Función no reconocida.",
                 };
             }
 
-            // Respuesta de texto normal
-            return Str::markdown($choice['content'] ?? "No pude generar una respuesta fluida.");
+            return Str::markdown($choice['content'] ?? "Entendido.");
 
         } catch (\Exception $e) {
-            Log::error('ChatService Exception: ' . $e->getMessage());
-            return "Algo salió mal internamente. Por favor intenta de nuevo.";
+            Log::error('AiAssistantService Error: ' . $e->getMessage());
+            return "Error crítico: " . $e->getMessage();
         }
     }
 
     /**
-     * PASO 1: Generar vista previa y persistir en Cache
+     * Paso 1: Generar vista previa y persistir en Cache
      */
     protected function handlePrepare(array $args, User $user, array $context): string
     {
+        $name   = $args['name'] ?? 'Compra';
         $amount = (float) ($args['total_amount'] ?? 0);
-        $name   = trim($args['name'] ?? '');
 
-        if ($amount <= 0 || strlen($name) < 2) {
-            return "Para registrar el gasto necesito un nombre real y un monto superior a 0. ¿Me los confirmas?";
-        }
+        if ($amount <= 0) return "Necesito saber el monto exacto para registrar.";
 
         // --- VALIDACIÓN DE CATEGORÍA (Red de Seguridad) ---
         $categoryId     = (int) ($args['category_id'] ?? 0);
@@ -162,7 +155,7 @@ class GeminiService
         $categoryMatch  = $userCategories->firstWhere('id', $categoryId);
 
         if (!$categoryMatch) {
-            Log::warning("IA intentó usar ID de categoría inexistente: {$categoryId}. Buscando fallback.");
+            Log::warning("AI intentó usar ID de categoría inexistente: {$categoryId}. Buscando fallback.");
             $categoryMatch = $userCategories->first();
         }
 
@@ -194,57 +187,54 @@ class GeminiService
             "| 🏷️ Categoría | **{$args['category_name']}** |\n" .
             "| 📅 Fecha | **{$dateLabel}** |\n" .
             "| 🔢 Cuotas | **" . ($args['installments_count'] ?? 1) . "** |\n\n" .
-            "¿Confirmas el registro? Haz clic abajo o responde **sí**.";
+            "¿Confirmas el registro? Haz clic abajo o responde sí.";
 
-        return Str::markdown($markdown);
+        return $markdown;
     }
 
     /**
-     * PASO 2: Ejecutar desde Cache (Precisión 100%)
+     * Paso 2: Registro definitivo desde Cache
      */
     protected function handleExecute(User $user): string
     {
-        $data = Cache::get("pending_purchase_{$user->id}");
+        $pending = Cache::get("pending_purchase_{$user->id}");
 
-        if (!$data) {
-            return "Lo siento, la sesión de confirmación expiró o no encontré una compra pendiente. ¿Podemos empezar de nuevo?";
+        if (!$pending) {
+            return "❌ Lo siento, la sesión de registro expiró (10 min). Por favor, dime de nuevo qué quieres registrar.";
         }
 
         try {
-            $this->purchaseService->create([
-                'credit_card_id'     => $data['credit_card_id'],
-                'category_id'        => $data['category_id'],
-                'name'               => $data['name'],
-                'total_amount'       => $data['total_amount'],
-                'installments_count' => $data['installments_count'] ?? 1,
-                'purchase_date'      => $data['purchase_date'],
-            ], $user->id);
+            $purchase = $this->purchaseService->createPurchase($user, [
+                'name'               => $pending['name'],
+                'total_amount'       => $pending['total_amount'],
+                'purchase_date'      => $pending['purchase_date'],
+                'credit_card_id'     => $pending['credit_card_id'],
+                'category_id'        => $pending['category_id'],
+                'installments_count' => $pending['installments_count'] ?? 1,
+            ]);
 
-            // Limpiamos el cache tras el éxito
             Cache::forget("pending_purchase_{$user->id}");
 
-            return "✅ **¡Compra registrada exitosamente!**\nHe añadido **{$data['name']}** por valor de **$" . number_format($data['total_amount'], 0, ',', '.') . "** a su tarjeta. Tu dashboard ya ha sido actualizado.";
+            $valor = number_format($purchase->total_amount, 0, ',', '.');
+            return "✅ **¡Gasto registrado con éxito!**\n\nHe guardado **{$purchase->name}** por **\${$valor}** en tu historial. Tu dashboard ya está actualizado.";
+
         } catch (\Exception $e) {
-            Log::error('Error finalizando compra desde Cache: ' . $e->getMessage());
-            return "Hubo un problema al guardar definitivamente: " . $e->getMessage();
+            Log::error('Error al guardar compra desde AI: ' . $e->getMessage());
+            return "❌ Hubo un error al guardar en la base de datos: " . $e->getMessage();
         }
     }
 
-    /**
-     * Resuelve y valida la fecha
-     */
-    protected function resolveDate(?string $rawDate): string
+    protected function resolveDate(?string $providedDate): string
     {
-        $currentYear = (int) now()->format('Y');
-        if (!$rawDate) return now()->toDateString();
-
+        if (!$providedDate) return now()->toDateString();
+        
         try {
-            $parsed = \Carbon\Carbon::parse($rawDate);
-            if (abs((int)$parsed->format('Y') - $currentYear) > 1) {
-                $parsed->setYear($currentYear);
-                if ($parsed->isFuture()) $parsed->subYear();
+            $date = \Illuminate\Support\Carbon::parse($providedDate);
+            // Si la fecha es futura (ej March 2026), forzamos año actual si coincide el día/mes
+            if ($date->year > now()->year) {
+                $date->year = now()->year;
             }
-            return $parsed->toDateString();
+            return $date->toDateString();
         } catch (\Exception $e) {
             return now()->toDateString();
         }
@@ -257,18 +247,18 @@ class GeminiService
                 'type' => 'function',
                 'function' => [
                     'name'        => 'prepare_purchase',
-                    'description' => 'Genera una VISTA PREVIA (Paso 1). Úsala cuando el usuario mencione un gasto con nombre, monto y tarjeta. NO guarda en BD.',
+                    'description' => 'Genera una VISTA PREVIA (Paso 1). Úsala cuando el usuario mencione un gasto con nombre, monto y tarjeta.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'name' => ['type' => 'string'],
-                            'total_amount' => ['type' => 'number'],
-                            'credit_card_id' => ['type' => 'integer'],
-                            'credit_card_name' => ['type' => 'string'],
-                            'category_id' => ['type' => 'integer', 'description' => 'ID exacto de la lista de categorías.'],
-                            'category_name' => ['type' => 'string'],
-                            'installments_count' => ['type' => 'integer'],
-                            'purchase_date' => ['type' => 'string', 'description' => 'YYYY-MM-DD'],
+                            'name'               => ['type' => 'string', 'description' => 'Descripción corta del gasto (ej: Gasolina Moto, Almuerzo)'],
+                            'total_amount'       => ['type' => 'number', 'description' => 'Monto total sin puntos ni comas'],
+                            'credit_card_id'     => ['type' => 'integer', 'description' => 'ID de la tarjeta de crédito del listado proporcionado'],
+                            'credit_card_name'   => ['type' => 'string', 'description' => 'Nombre de la tarjeta (ej: Nu, Visa, etc.)'],
+                            'category_id'        => ['type' => 'integer', 'description' => 'ID de la categoría del listado proporcionado'],
+                            'category_name'      => ['type' => 'string', 'description' => 'Nombre de la categoría elegida'],
+                            'installments_count' => ['type' => 'integer', 'description' => 'Número de cuotas. Por defecto 1.'],
+                            'purchase_date'      => ['type' => 'string', 'description' => 'Fecha en formato YYYY-MM-DD. Infere el año actual si no se especifica.'],
                         ],
                         'required' => ['name', 'total_amount', 'credit_card_id', 'category_id'],
                     ],
@@ -278,7 +268,7 @@ class GeminiService
                 'type' => 'function',
                 'function' => [
                     'name'        => 'create_purchase',
-                    'description' => 'REGISTRO DEFINITIVO (Paso 2). Llama esta función SOLO cuando el usuario confirme el registro después de haber visto la vista previa.',
+                    'description' => 'REGISTRO DEFINITIVO (Paso 2). LLÁMALA CUANDO EL USUARIO DIGA "SÍ", "CONFIRMO", O PARECIDO.',
                     'parameters'  => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
@@ -323,11 +313,6 @@ Responde en Español de Colombia, tono profesional.
 HOY ES: {$today}.
 
 ══════════════════════════════════════════
-ESTADO FINANCIERO:
-══════════════════════════════════════════
-{$summary}
-
-══════════════════════════════════════════
 TARJETAS DISPONIBLES:
 ══════════════════════════════════════════
 {$cardList}
@@ -337,22 +322,23 @@ CATEGORÍAS DISPONIBLES:
 ══════════════════════════════════════════
 {$catList}
 
-🚨 REGLAS DE CATEGORIZACIÓN (MÁXIMA PRIORIDAD):
-Analiza semánticamente el gasto antes de elegir la categoría:
-- Gasto en Gasolina, Tanqueada, Moto, Terpel, Primax, Carro, Combustible -> USA Categoría "Transporte". NUNCA elijas "Tarjeta".
-- Gasto en Comida, Almuerzo, Cena, Rappi, Mercado, D1, Carulla -> USA Categoría "Alimentación" o "Mercado".
-- NUNCA uses la categoría llamada "Tarjeta" para gastos de combustible o comida. "Tarjeta" es solo si no hay nada más que encaje.
-- Si el usuario menciona "Nu", se refiere a su tarjeta Nu de crédito que aparece en la lista de arriba con su ID.
+🚨 REGLAS DE CATEGORIZACIÓN (PRIORIDAD ALTA):
+1. Combustible (Gasolina, Tanqueada, Moto, Terpel, Primax) -> USA Categoría "Transporte". NUNCA "Tarjeta".
+2. Comida (Almuerzo, Cena, Rappi, McDonald's) -> USA Categoría "Alimentación".
+3. Busca siempre la categoría más específica. Evita categorías genéricas.
+
+🚨 REGLAS DE TARJETAS (MÁXIMA PRIORIDAD):
+Cuando el usuario mencione una tarjeta (ej: "Nu", "la de Davivienda", "la 4321"):
+- Busca coincidencias en la lista "TARJETAS DISPONIBLES" usando el NOMBRE, la FRANQUICIA o los ÚLTIMOS 4 DÍGITOS.
+- Si encuentras el ID, úsalo en `prepare_purchase`.
 
 ══════════════════════════════════════════
-FLUJO DE REGISTRO SEGURO (SIN BUCLES):
+FLUJO DE REGISTRO SEGURO:
 ══════════════════════════════════════════
-1. PASO 1 (Vista Previa): Siempre que recibas datos de un gasto, llama a `prepare_purchase`.
-2. PASO 2 (Registro Real): Si ya mostraste la TABLA DE VISTA PREVIA arriba y el usuario confirma (ej. "sí", "dale", "ok", "Sí, registrar"), llama a `create_purchase` INMEDIATAMENTE.
-   - ⛔ NO vuelvas a llamar a `prepare_purchase` si el usuario solo está confirmando lo que ya vio.
-   - Si el usuario dice "No", pregunta qué corregir.
+1. Paso 1 (Vista Previa): Muestra la tabla enviando datos a `prepare_purchase`.
+2. Paso 2 (Crear): Si ya hay una tabla arriba y el usuario confirma, llama a `create_purchase`. NO vuelvas a pedir vista previa.
 
-Tu misión es registrar con precisión y sin bucles para que {$userName} tenga el control total.
+Tu misión es registrar con precisión para que {$userName} tenga el control total.
 PROMPT;
     }
 
@@ -367,16 +353,14 @@ PROMPT;
         ];
 
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])
-                ->post($this->baseUrl, [
-                    'model'       => $this->visionModel,
-                    'messages'    => $messages,
-                    'temperature' => 0.7,
-                    'max_tokens'  => 1024,
-                ]);
+            $response = Http::withoutVerifying()->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])->post($this->baseUrl, [
+                'model'       => $this->visionModel,
+                'messages'    => $messages,
+                'temperature' => 0.7,
+                'max_tokens'  => 1024,
+            ]);
 
-            if ($response->failed()) return "Problema de visión temporal.";
+            if ($response->failed()) return "Lo siento, no pude procesar la imagen.";
             $data = $response->json();
             return Str::markdown($data['choices'][0]['message']['content'] ?? "No pude ver la imagen.");
         } catch (\Exception $e) {

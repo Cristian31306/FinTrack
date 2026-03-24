@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Ai\GeminiService;
+use App\Services\Ai\AiAssistantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AiController extends Controller
 {
     public function __construct(
-        protected GeminiService $aiService
+        protected AiAssistantService $aiService
     ) {}
 
     public function chat(Request $request): JsonResponse

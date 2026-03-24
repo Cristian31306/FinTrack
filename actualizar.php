@@ -65,16 +65,12 @@ $ok = true;
 $ok &= verificarVariableEnv($env, 'APP_KEY', 'Ejecuta: php artisan key:generate');
 $ok &= verificarVariableEnv($env, 'DB_CONNECTION', 'Debe estar configurada la conexión de BD (ej: sqlite o mysql)');
 
-// Variables para la IA - Gemini
-echo "\n\033[33m  [IA] Verificando credenciales de Gemini AI...\033[0m\n";
-$ok &= verificarVariableEnv($env, 'GEMINI_API_KEY', 'Obtén tu API Key en: https://aistudio.google.com/app/apikey');
+// Variables para la IA - Groq (Llama 3.3)
+echo "\n\033[33m  [IA] Verificando credenciales de Groq AI...\033[0m\n";
+$ok &= verificarVariableEnv($env, 'GROQ_API_KEY', 'Obtén tu API Key en: https://console.groq.com/keys');
 
-// Variables de modelo Gemini (si aplica)
-if (!empty($env['GEMINI_MODEL'])) {
-    echo "\033[32m  ✔ GEMINI_MODEL\033[0m definido como: {$env['GEMINI_MODEL']}\n";
-} else {
-    echo "\033[33m  ℹ GEMINI_MODEL\033[0m no está en .env (el código usará el modelo por defecto configurado en GeminiService.php)\n";
-}
+// Información adicional
+echo "\033[32m  ✔ Usando AiAssistantService.php\033[0m para el procesamiento inteligente.\n";
 
 if (!$ok) {
     echo "\n\033[31mCORRIGE los errores del .env antes de continuar.\033[0m\n";
@@ -137,6 +133,5 @@ echo "\n\033[34m╔════════════════════�
 echo "\033[32m║        ✔ ACTUALIZACIÓN COMPLETADA CON ÉXITO       ║\033[0m\n";
 echo "\033[34m╚══════════════════════════════════════════════════╝\033[0m\n";
 echo "\n\033[33mVariables de .env recomendadas para las nuevas funciones:\033[0m\n";
-echo "  GEMINI_API_KEY   → Clave de API de Google AI Studio (para el asistente)\n";
-echo "  GEMINI_MODEL     → (Opcional) Nombre del modelo. Ej: gemini-2.0-flash\n";
-echo "  APP_URL          → URL pública del VPS. Ej: https://fintrack.midominio.com\n\n";
+echo "  GROQ_API_KEY   → Clave de API de Groq Console (para el asistente Llama 3.3)\n";
+echo "  APP_URL        → URL pública del VPS. Ej: https://fintrack.midominio.com\n\n";
