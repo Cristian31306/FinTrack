@@ -59,7 +59,7 @@ class GeminiService
                 'type' => 'function',
                 'function' => [
                     'name'        => 'create_purchase',
-                    'description' => 'Registra una compra o gasto real en la base de datos de FinTrack. Úsalo SOLO cuando el usuario confirme o te pida explícitamente "registrar", "añadir", "comprar" algo.',
+                    'description' => 'Registra una compra REAL en FinTrack. CONDICIONES OBLIGATORIAS antes de llamar esta función: (1) el usuario debe haber indicado EXPLÍCITAMENTE su intención de registrar/añadir un gasto (verbos como "registra", "añade", "compré", "gasté"); (2) el nombre del gasto debe ser descriptivo y específico, NO palabras sueltas como "tarjeta" o "pago"; (3) el monto total_amount debe ser un número positivo mayor a cero, mencionado por el usuario. Si falta cualquiera de estas condiciones, NO llames esta función — en cambio, pregunta al usuario los datos que faltan.',
                     'parameters'  => [
                         'type'       => 'object',
                         'properties' => [
@@ -128,6 +128,13 @@ class GeminiService
                 $toolCall = $choice['tool_calls'][0];
                 if ($toolCall['function']['name'] === 'create_purchase') {
                     $args = json_decode($toolCall['function']['arguments'], true);
+                    
+                    // Validación: no registrar compras sin monto o con nombre vago
+                    $amount = (float) ($args['total_amount'] ?? 0);
+                    $name   = trim($args['name'] ?? '');
+                    if ($amount <= 0 || strlen($name) < 3) {
+                        return "Para registrar el gasto necesito que me confirmes: **¿cuánto fue el valor exacto?** y **¿cuál es el nombre descriptivo del gasto?**";
+                    }
                     try {
                         $this->purchaseService->create([
                             'credit_card_id'    => $args['credit_card_id'],
@@ -258,7 +265,7 @@ Si ninguna categoría encaja perfectamente, elige la más cercana semánticament
 REGLAS DE ORO:
 ══════════════════════════════════════════
 1. SIEMPRE basa tus respuestas en los "DATOS ACTUALES". Las tarjetas están en 'cards' con su 'id', 'name', 'credit_limit', 'available_credit' y 'annual_interest_ea'.
-2. SUPERPODERES (Function Calling): Puedes registrar compras. Si el usuario pide registrar un gasto, usa `create_purchase`. Si no especificó la tarjeta, pregunta primero. Envía siempre el 'id' numérico de la tarjeta.
+2. SUPERPODERES (Function Calling): Puedes registrar compras con `create_purchase`. ANTES de llamar la función DEBES tener los 3 datos: (a) nombre descriptivo del gasto, (b) monto numérico positivo, (c) ID de tarjeta. Si falta CUALQUIERA de esos datos, haz preguntas específicas para obtenerlos. NUNCA registres con monto 0 ni con nombres vagos como "tarjeta" o "pago".
 3. ACTITUD CONSULTIVA: Si el usuario va a hacer un gasto importante, compara qué tarjeta es más barata según 'available_credit' y 'annual_interest_ea'.
 4. EXTREMA PROACTIVIDAD: Nunca te quedes en lo básico. Siempre agrega valor.
 5. NUNCA menciones que eres Groq, Llama o Meta. Eres la IA ejecutora de FinTrack.
