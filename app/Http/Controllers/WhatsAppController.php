@@ -37,8 +37,9 @@ class WhatsAppController extends Controller
                     ->first();
 
         if (!$user) {
-            $this->whatsappService->sendMessage($from, "Lo siento, no reconozco este número de teléfono en FinTrack. Por favor, asegúrate de registrarlo en tu perfil.");
-            return response('User not found', 200);
+            Log::warning("[WhatsApp Webhook] Usuario no encontrado para el número: $from");
+            return response("<Response><Message>Lo siento, no reconozco este número en FinTrack. Por favor, asegúrate de registrarlo en tu perfil.</Message></Response>", 200)
+                ->header('Content-Type', 'text/xml');
         }
 
         try {
@@ -49,18 +50,20 @@ class WhatsAppController extends Controller
             }
 
             // 3. Obtener respuesta de la IA
-            // Nota: Para WhatsApp no estamos manejando historial persistente en esta fase,
-            // pero AiAssistantService lo usa para reconstruir el estado de confirmación si es necesario.
             $response = $this->aiService->chat($user, $body ?? '', [], $image);
 
-            // 4. Enviar respuesta de vuelta
-            $this->whatsappService->sendMessage($from, $response);
+            Log::info('[WhatsApp Webhook] Respondiendo con TwiML');
+
+            // 4. Devolver TwiML directamente
+            $xmlResponse = "<Response><Message>" . htmlspecialchars($response) . "</Message></Response>";
+            
+            return response($xmlResponse, 200)
+                ->header('Content-Type', 'text/xml');
 
         } catch (\Exception $e) {
             Log::error("[WhatsApp Webhook] Error: " . $e->getMessage());
-            $this->whatsappService->sendMessage($from, "Ups, tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.");
+            return response("<Response><Message>Ups, tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.</Message></Response>", 200)
+                ->header('Content-Type', 'text/xml');
         }
-
-        return response('OK', 200);
     }
 }
