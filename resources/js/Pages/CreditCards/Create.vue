@@ -17,7 +17,6 @@ const form = useForm({
     last_4_digits: '',
     credit_limit: '',
     annual_interest_ea: '0',
-    minimum_payment_percent: '5',
     statement_day: 15,
     payment_day: 5,
     color: '#4f46e5',
@@ -215,20 +214,6 @@ function submit() {
                                 <InputError class="mt-2" :message="form.errors.payment_day" />
                             </div>
 
-                            <div class="md:col-span-2">
-                                <InputLabel for="minimum_payment_percent" value="% Pago Mínimo Sugerido" class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500" />
-                                <TextInput
-                                    id="minimum_payment_percent"
-                                    v-model="form.minimum_payment_percent"
-                                    type="number"
-                                    step="0.1"
-                                    min="0.1"
-                                    max="100"
-                                    class="block w-full"
-                                    required
-                                />
-                                <InputError class="mt-2" :message="form.errors.minimum_payment_percent" />
-                            </div>
                         </div>
 
                         <div class="pt-6">

@@ -18,9 +18,6 @@ const form = useForm({
     last_4_digits: props.creditCard.last_4_digits ?? '',
     credit_limit: String(props.creditCard.credit_limit),
     annual_interest_ea: String(props.creditCard.annual_interest_ea),
-    minimum_payment_percent: String(
-        props.creditCard.minimum_payment_percent ?? 5,
-    ),
     statement_day: props.creditCard.statement_day,
     payment_day: props.creditCard.payment_day,
     color: props.creditCard.color || '#4f46e5',
@@ -209,20 +206,6 @@ function submit() {
                                 <InputError class="mt-2" :message="form.errors.payment_day" />
                             </div>
 
-                            <div class="md:col-span-2">
-                                <InputLabel for="minimum_payment_percent" value="% Pago Mínimo Sugerido" class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500" />
-                                <TextInput
-                                    id="minimum_payment_percent"
-                                    v-model="form.minimum_payment_percent"
-                                    type="number"
-                                    step="0.1"
-                                    min="0.1"
-                                    max="100"
-                                    class="block w-full"
-                                    required
-                                />
-                                <InputError class="mt-2" :message="form.errors.minimum_payment_percent" />
-                            </div>
                         </div>
 
                         <div class="pt-6">
