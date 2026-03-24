@@ -162,10 +162,12 @@ class GeminiService
                     $cardName     = $args['credit_card_name'] ?? "Tarjeta ID " . ($args['credit_card_id'] ?? '?');
                     $categoryName = $args['category_name']    ?? "Categoría ID " . ($args['category_id'] ?? '?');
                     $cuotas       = (int) ($args['installments_count'] ?? 1);
-                    $dateLabel    = \Carbon\Carbon::parse($date)->translatedFormat('d \d\e F \d\e Y');
+                    $carbonDate   = \Carbon\Carbon::parse($date);
+                    $meses        = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+                    $dateLabel    = $carbonDate->day . ' de ' . $meses[$carbonDate->month - 1] . ' de ' . $carbonDate->year;
                     $amountFmt    = '$' . number_format($amount, 0, ',', '.');
 
-                    return "📋 **Vista previa del registro:**\n\n" .
+                    $markdown = "📋 **Vista previa del registro:**\n\n" .
                            "| Campo | Valor |\n" .
                            "|---|---|\n" .
                            "| 🛒 Descripción | **{$name}** |\n" .
@@ -175,6 +177,8 @@ class GeminiService
                            "| 📅 Fecha | **{$dateLabel}** |\n" .
                            "| 🔢 Cuotas | **{$cuotas}** |\n\n" .
                            "¿Confirmas el registro? Responde **sí** para guardar o **no** si necesitas corregir algo.";
+
+                    return \Illuminate\Support\Str::markdown($markdown);
                 }
 
                 // ── PASO 2: Registro definitivo ───────────────────────────────
