@@ -48,6 +48,10 @@ ejecutar('npm run build');
 echo "\n\033[33mLimpiando y optimizando caché...\033[0m\n";
 ejecutar('php artisan optimize:clear');
 
+// 7.5. Enlace de Almacenamiento (Para evitar error 404 en imágenes /storage)
+echo "\n\033[33mGenerando enlaces de almacenamiento si no existen...\033[0m\n";
+ejecutar('php artisan storage:link');
+
 // 8. Arreglar permisos (Para evitar errores 500 en el VPS)
 // Si ejecutas esto en Windows local y falla, no pasa nada, continuará.
 if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
