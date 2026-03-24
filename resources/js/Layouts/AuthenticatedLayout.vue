@@ -78,9 +78,14 @@ const showingNavigationDropdown = ref(false);
                                                 type="button"
                                                 class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                             >
-                                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                                                    {{ $page.props.auth.user.name.charAt(0) }}
-                                                </div>
+                                                <template v-if="$page.props.auth.user.avatar_url">
+                                                    <img :src="$page.props.auth.user.avatar_url" :alt="$page.props.auth.user.name" class="h-6 w-6 rounded-full object-cover">
+                                                </template>
+                                                <template v-else>
+                                                    <div class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                                                        {{ $page.props.auth.user.name.charAt(0) }}
+                                                    </div>
+                                                </template>
                                                 {{ $page.props.auth.user.name }}
                                                 <svg
                                                     class="-me-0.5 ms-1 h-4 w-4 opacity-50"
@@ -166,12 +171,22 @@ const showingNavigationDropdown = ref(false);
 
                         <!-- Mobile User Info -->
                         <div class="border-t border-slate-100 pb-1 pt-4">
-                            <div class="px-4">
-                                <div class="text-base font-semibold text-slate-900">
-                                    {{ $page.props.auth.user.name }}
-                                </div>
-                                <div class="text-sm font-medium text-slate-500">
-                                    {{ $page.props.auth.user.email }}
+                            <div class="px-4 flex items-center gap-3">
+                                <template v-if="$page.props.auth.user.avatar_url">
+                                    <img :src="$page.props.auth.user.avatar_url" :alt="$page.props.auth.user.name" class="h-10 w-10 rounded-full object-cover shrink-0">
+                                </template>
+                                <template v-else>
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-600">
+                                        {{ $page.props.auth.user.name.charAt(0) }}
+                                    </div>
+                                </template>
+                                <div>
+                                    <div class="text-base font-semibold text-slate-900">
+                                        {{ $page.props.auth.user.name }}
+                                    </div>
+                                    <div class="text-sm font-medium text-slate-500">
+                                        {{ $page.props.auth.user.email }}
+                                    </div>
                                 </div>
                             </div>
 
