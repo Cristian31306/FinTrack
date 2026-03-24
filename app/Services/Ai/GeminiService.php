@@ -124,12 +124,15 @@ class GeminiService
 
         if (!$categoryMatch) {
             Log::warning("IA intentó usar ID de categoría inexistente: {$categoryId}. Buscando fallback.");
-            $categoryMatch = $userCategories->first(); // Fallback a la primera categoría del usuario
+            $categoryMatch = $userCategories->first();
+        }
+
+        if ($categoryMatch) {
             $args['category_id']   = $categoryMatch['id'] ?? null;
             $args['category_name'] = $categoryMatch['name'] ?? 'General';
         } else {
-            // Aseguramos el nombre real de la BD
-            $args['category_name'] = $categoryMatch['name'];
+            $args['category_id']   = null;
+            $args['category_name'] = 'Sin categoría';
         }
 
         // --- RESOLVER FECHA ---
@@ -237,7 +240,7 @@ class GeminiService
                 'function' => [
                     'name'        => 'create_purchase',
                     'description' => 'REGISTRO DEFINITIVO (Paso 2). Llama esta función SOLO cuando el usuario confirme el registro después de haber visto la vista previa.',
-                    'parameters'  => ['type' => 'object', 'properties' => []],
+                    'parameters'  => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
         ];
