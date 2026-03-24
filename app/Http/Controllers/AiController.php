@@ -22,15 +22,21 @@ class AiController extends Controller
             'image.data' => 'required_with:image|string',
         ]);
 
-        $response = $this->aiService->chat(
-            $request->user(),
-            $request->input('message') ?? 'Por favor, procesa esta imagen o factura que te adjunto para identificar los montos de la compra.',
-            $request->input('history', []),
-            $request->input('image')
-        );
+        try {
+            $response = $this->aiService->chat(
+                $request->user(),
+                $request->input('message') ?? 'Por favor, procesa esta imagen o factura que te adjunto para identificar los montos de la compra.',
+                $request->input('history', []),
+                $request->input('image')
+            );
 
-        return response()->json([
-            'message' => $response
-        ]);
+            return response()->json(['message' => $response]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('AiController::chat Throwable: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(
+                ['message' => 'Error interno del asistente. Por favor intenta de nuevo.'],
+                500
+            );
+        }
     }
 }

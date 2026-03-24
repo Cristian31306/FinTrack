@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     protected string $apiKey;
-    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
 
     public function __construct(
         protected DebtSummaryService $summaryService,
@@ -119,8 +119,10 @@ class GeminiService
                 ]);
 
             if ($response->failed()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                return "Lo siento, tuve un problema conectando con mi cerebro. Por favor intenta de nuevo en un momento.";
+                Log::error('Gemini API Error [HTTP ' . $response->status() . ']: ' . $response->body());
+                $errBody = $response->json();
+                $errMsg  = $errBody['error']['message'] ?? $response->body();
+                return "Lo siento, tuve un problema conectando con mi cerebro (código {$response->status()}): {$errMsg}";
             }
 
             $data = $response->json();
@@ -160,8 +162,8 @@ class GeminiService
             return \Illuminate\Support\Str::markdown($markdownText);
 
         } catch (\Exception $e) {
-            Log::error('AiService Exception: ' . $e->getMessage());
-            return "Algo salió mal: " . $e->getMessage();
+            Log::error('AiService Exception: ' . $e->getMessage() . '\n' . $e->getTraceAsString());
+            return "Algo salió mal internamente. Por favor intenta de nuevo.";
         }
     }
 
