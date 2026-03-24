@@ -411,4 +411,40 @@ const selectQuickAction = (action) => {
 .markdown-body li {
     margin-bottom: 0.25em;
 }
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+    font-size: 13px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.markdown-body th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.markdown-body td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.markdown-body tr:last-child td {
+    border-bottom: none;
+}
+
+.markdown-body tr:nth-child(even) {
+    background-color: #fbfcfe;
+}
+
+.markdown-body tr:hover {
+    background-color: #f1f5f9;
+}
 </style>
