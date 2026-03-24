@@ -1,9 +1,85 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { useTransition, TransitionPresets } from '@vueuse/core';
 
 defineProps({
-    canLogin: { type: Boolean },
-    canRegister: { type: Boolean },
+    canLogin: Boolean,
+    canRegister: Boolean,
+});
+
+// 💥 estado interactivo
+const amount = ref(0);
+const installments = ref(1);
+const creditLimit = 3000;
+
+// ⚡ Números animados (Nivel DIOS)
+const animatedAmount = useTransition(amount, {
+    duration: 1000,
+    transition: TransitionPresets.easeOutExpo,
+});
+
+const debt = computed(() => amount.value);
+const animatedDebt = useTransition(debt, {
+    duration: 1000,
+    transition: TransitionPresets.easeOutExpo,
+});
+
+const monthlyPayment = computed(() => {
+    if (installments.value <= 1) return debt.value;
+    return debt.value / installments.value;
+});
+const animatedMonthlyPayment = useTransition(monthlyPayment, {
+    duration: 1000,
+    transition: TransitionPresets.easeOutExpo,
+});
+
+const usage = computed(() => Math.min((debt.value / creditLimit) * 100, 100));
+const animatedUsage = useTransition(usage, {
+    duration: 1000,
+    transition: TransitionPresets.easeOutExpo,
+});
+
+// 🧠 Inteligencia de la App
+const feedback = computed(() => {
+    if (usage.value > 85) return { 
+        text: '¡Peligro! Estás casi al límite del cupo.', 
+        color: 'text-red-400', 
+        bg: 'bg-red-400/10',
+        border: 'border-red-500/20',
+        ping: 'bg-red-400',
+        dot: 'bg-red-500'
+    };
+    if (usage.value > 60) return { 
+        text: 'Uso alto. Podría afectar tu score crediticio.', 
+        color: 'text-orange-400', 
+        bg: 'bg-orange-400/10',
+        border: 'border-orange-500/20',
+        ping: 'bg-orange-400',
+        dot: 'bg-orange-500'
+    };
+    if (usage.value > 40) return { 
+        text: 'Buen ritmo, pero vigila tus fechas de corte.', 
+        color: 'text-yellow-400', 
+        bg: 'bg-yellow-400/10',
+        border: 'border-yellow-500/20',
+        ping: 'bg-yellow-400',
+        dot: 'bg-yellow-500'
+    };
+    return { 
+        text: 'Control perfecto. Tu salud financiera brilla.', 
+        color: 'text-emerald-400', 
+        bg: 'bg-emerald-400/10',
+        border: 'border-emerald-500/20',
+        ping: 'bg-emerald-400',
+        dot: 'bg-emerald-500'
+    };
+});
+
+const aiTip = computed(() => {
+    if (installments.value > 6 && amount.value > 1000) return '💡 Tip Pro: Diferir a tantas cuotas generará intereses altos. ¡Intenta bajar a 3!';
+    if (installments.value === 1) return '💡 ¡Excelente! Comprar a 1 cuota no genera intereses y ganas puntos.';
+    return '💡 Tip: Recuerda que FinTrack te avisará 2 días antes de tu fecha de pago.';
 });
 
 const features = [
@@ -36,29 +112,11 @@ const features = [
     <div
         class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100 antialiased"
     >
-        <!-- Fondo -->
-        <div
-            class="pointer-events-none fixed inset-0 -z-10"
-            aria-hidden="true"
-        >
-            <div
-                class="absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-emerald-500/25 blur-[100px]"
-            />
-            <div
-                class="absolute -right-20 top-1/4 h-[32rem] w-[32rem] rounded-full bg-indigo-600/20 blur-[110px]"
-            />
-            <div
-                class="absolute bottom-0 left-1/3 h-[24rem] w-[24rem] rounded-full bg-teal-500/15 blur-[90px]"
-            />
-            <div
-                class="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgb(2,6,23)_55%,rgb(2,6,23)_100%)]"
-            />
-            <div
-                class="absolute inset-0 opacity-[0.12]"
-                style="
-                    background-image: url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;);
-                "
-            />
+        <!-- Fondo más vivo -->
+        <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+            <div class="absolute w-[600px] h-[600px] bg-emerald-500/20 blur-[140px] animate-pulse top-[-100px] left-[-100px]" />
+            <div class="absolute w-[500px] h-[500px] bg-indigo-500/20 blur-[140px] animate-pulse bottom-[-100px] right-[-100px]" />
+            <div class="absolute inset-0 bg-slate-950/40" />
         </div>
 
         <!-- Nav -->
@@ -163,56 +221,82 @@ const features = [
                     </div>
                 </div>
 
-                <!-- Tarjeta visual -->
-                <div
-                    class="relative mx-auto mt-16 max-w-lg sm:mt-20 lg:max-w-xl"
-                >
-                    <div
-                        class="absolute -inset-4 rounded-3xl bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-indigo-500/20 blur-2xl"
-                    />
-                    <div
-                        class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800/90 to-slate-900/95 p-6 shadow-2xl ring-1 ring-white/5 backdrop-blur-sm sm:p-8"
-                    >
-                        <div
-                            class="flex items-start justify-between gap-4 border-b border-white/10 pb-4"
-                        >
-                            <div>
-                                <p
-                                    class="text-xs font-medium uppercase tracking-wider text-slate-500"
-                                >
-                                    Deuda estimada
-                                </p>
-                                <p
-                                    class="mt-1 text-3xl font-bold tabular-nums text-white"
-                                >
-                                    $ 0.00
-                                </p>
-                            </div>
-                            <div
-                                class="rounded-lg bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300"
-                            >
-                                Demo
-                            </div>
+                <!-- HERO (INTERACTIVO 🔥) -->
+                <div class="relative mx-auto mt-20 max-w-xl">
+                    <div class="absolute -inset-6 blur-3xl bg-emerald-500/20 rounded-full" />
+
+                    <div class="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 space-y-6 shadow-2xl">
+
+                        <!-- INPUT -->
+                        <div>
+                            <p class="text-sm text-slate-400 mb-2">Simula una compra</p>
+                            <input
+                                v-model="amount"
+                                type="number"
+                                placeholder="$ 0"
+                                class="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-400 transition"
+                            />
                         </div>
-                        <div class="mt-5 space-y-3">
-                            <div
-                                class="flex justify-between text-sm text-slate-400"
-                            >
-                                <span>Uso de cupo</span>
-                                <span class="text-emerald-400">0%</span>
+
+                        <!-- CUOTAS -->
+                        <div>
+                            <p class="text-sm text-slate-400 mb-2">Cuotas</p>
+                            <input
+                                type="range"
+                                min="1"
+                                max="12"
+                                v-model="installments"
+                                class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                            />
+                            <p class="text-xs text-slate-400 mt-2">{{ installments }} {{ installments == 1 ? 'cuota' : 'cuotas' }}</p>
+                        </div>
+
+                        <!-- RESULTADOS -->
+                        <div class="border-t border-white/10 pt-6 space-y-4">
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Deuda Estimada</p>
+                                    <p class="text-2xl font-bold text-white tabular-nums">
+                                        ${{ Math.round(animatedDebt).toLocaleString() }}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Cuota Mensual</p>
+                                    <p class="text-xl font-bold text-emerald-400 tabular-nums">
+                                        ${{ animatedMonthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}
+                                    </p>
+                                </div>
                             </div>
-                            <div
-                                class="h-2 overflow-hidden rounded-full bg-slate-700/80"
-                            >
-                                <div
-                                    class="h-full w-[35%] rounded-full bg-gradient-to-r from-emerald-400 to-teal-500"
-                                />
+
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-400">Uso del cupo proyectado</span>
+                                    <span :class="feedback.color">{{ animatedUsage.toFixed(1) }}%</span>
+                                </div>
+                                <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5">
+                                    <div
+                                        class="h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_15px_rgba(52,211,153,0.3)]"
+                                        :class="usage > 85 ? 'bg-red-500' : (usage > 60 ? 'bg-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')"
+                                        :style="{ width: animatedUsage + '%' }"
+                                    />
+                                </div>
                             </div>
-                            <div
-                                class="flex justify-between pt-2 text-xs text-slate-500"
+
+                            <!-- FEEDBACK DINÁMICO (AI INSIGHT) -->
+                            <div 
+                                class="rounded-xl p-4 transition-all duration-500 border"
+                                :class="[feedback.bg, feedback.color, feedback.border]"
                             >
-                                <span>Próximo corte</span>
-                                <span class="text-slate-300">—</span>
+                                <p class="text-sm font-semibold flex items-center gap-2">
+                                    <span class="relative flex h-2 w-2">
+                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="feedback.ping"></span>
+                                      <span class="relative inline-flex rounded-full h-2 w-2" :class="feedback.dot"></span>
+                                    </span>
+                                    {{ feedback.text }}
+                                </p>
+                                <p class="text-xs mt-2 opacity-80 leading-relaxed italic">
+                                    {{ aiTip }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -241,7 +325,9 @@ const features = [
                         <li
                             v-for="f in features"
                             :key="f.title"
-                            class="group rounded-2xl border border-white/10 bg-slate-900/60 p-6 transition hover:border-emerald-500/30 hover:bg-slate-800/60"
+                            class="group rounded-2xl border border-white/10 bg-slate-900/60 p-6 
+                            transition duration-300 hover:scale-[1.03] hover:-translate-y-1 
+                            hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/10"
                         >
                             <div
                                 class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 text-emerald-400 ring-1 ring-emerald-500/20"
