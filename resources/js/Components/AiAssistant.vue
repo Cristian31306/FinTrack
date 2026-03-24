@@ -276,7 +276,21 @@ const selectQuickAction = (action) => {
                                 </template>
                                 <template v-else>
                                     <div v-html="msg.content"></div>
-                                    <!-- Quick Actions inside bot message -->
+                                    
+                                    <!-- Botones de Confirmación de Compra (Vista Previa) -->
+                                    <div v-if="msg.role === 'bot' && msg.content.includes('Vista previa del registro') && !isTyping"
+                                        class="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3">
+                                        <button @click="selectQuickAction('Sí, registrar compra')"
+                                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md active:scale-95">
+                                            <span>✅ Sí, registrar</span>
+                                        </button>
+                                        <button @click="selectQuickAction('No, corregir datos')"
+                                            class="flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-95">
+                                            <span>❌ No, corregir</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Quick Actions inside bot message (Initial one) -->
                                     <div v-if="index === 0 && messages.length === 1 && !isTyping"
                                         class="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3">
                                         <button v-for="(action, i) in quickActions" :key="i"
