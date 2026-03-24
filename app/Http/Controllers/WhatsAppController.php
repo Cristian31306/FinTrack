@@ -55,7 +55,7 @@ class WhatsAppController extends Controller
             return response($xmlResponse, 200)
                 ->header('Content-Type', 'text/xml');
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("[WhatsApp Webhook] Error: " . $e->getMessage());
             return response("<Response><Message>Ups, tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.</Message></Response>", 200)
                 ->header('Content-Type', 'text/xml');
