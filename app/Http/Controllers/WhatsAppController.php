@@ -10,24 +10,16 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppController extends Controller
 {
-    public function __construct(
-        protected AiAssistantService $aiService,
-        protected WhatsAppService $whatsappService
-    ) {}
-
-    /**
-     * Maneja el webhook entrante de Twilio.
-     */
     public function webhook(Request $request)
     {
         $from    = $request->input('From'); // whatsapp:+57...
         $body    = $request->input('Body');
         $mediaUrl = $request->input('MediaUrl0');
 
-        Log::info("[WhatsApp Webhook] Mensaje recibido", [
+        Log::info('[WhatsApp Webhook] Mensaje recibido', [
             'from' => $from,
             'body' => $body,
-            'has_media' => !empty($mediaUrl)
+            'media' => $mediaUrl
         ]);
 
         // 1. Identificar al usuario por el número de teléfono
@@ -43,14 +35,17 @@ class WhatsAppController extends Controller
         }
 
         try {
+            $whatsappService = app(WhatsAppService::class);
+            $aiService = app(AiAssistantService::class);
+
             // 2. Procesar imagen si existe
             $image = null;
             if (!empty($mediaUrl)) {
-                $image = $this->whatsappService->downloadMedia($mediaUrl);
+                $image = $whatsappService->downloadMedia($mediaUrl);
             }
 
             // 3. Obtener respuesta de la IA
-            $response = $this->aiService->chat($user, $body ?? '', [], $image);
+            $response = $aiService->chat($user, $body ?? '', [], $image);
 
             Log::info('[WhatsApp Webhook] Respondiendo con TwiML');
 
