@@ -50,7 +50,7 @@ class WhatsAppController extends Controller
             Log::info('[WhatsApp Webhook] Respondiendo con TwiML');
 
             // 4. Devolver TwiML directamente
-            $xmlResponse = "<Response><Message>" . htmlspecialchars($response) . "</Message></Response>";
+            $xmlResponse = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>" . htmlspecialchars($response) . "</Message></Response>";
             
             return response($xmlResponse, 200)
                 ->header('Content-Type', 'text/xml');
