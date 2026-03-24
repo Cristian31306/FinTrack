@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
-import { useTransition, TransitionPresets } from '@vueuse/core';
+import { useTransition, TransitionPresets, useMouseInElement } from '@vueuse/core';
 
 defineProps({
     canLogin: Boolean,
@@ -11,98 +11,80 @@ defineProps({
 // 💥 estado interactivo
 const amount = ref(0);
 const installments = ref(1);
-const creditLimit = 3000;
+const creditLimit = 50000; // Incrementamos a un cupo más estándar para el demo
+
+// 🎡 Lógica 3D (Efecto Tilt)
+const targetCard = ref(null);
+const { elementX, elementY, elementWidth, elementHeight, isOutside } = useMouseInElement(targetCard);
+
+const cardTransform = computed(() => {
+    if (isOutside.value) return 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+    
+    const rotateX = (-(elementY.value / elementHeight.value - 0.5) * 20).toFixed(2);
+    const rotateY = ((elementX.value / elementWidth.value - 0.5) * 20).toFixed(2);
+    
+    return `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+});
 
 // ⚡ Números animados (Nivel DIOS)
-const animatedAmount = useTransition(amount, {
-    duration: 1000,
-    transition: TransitionPresets.easeOutExpo,
+const animatedAmount = useTransition(amount, { duration: 1000, transition: TransitionPresets.easeOutExpo });
+const debt = computed(() => amount.value);
+const animatedDebt = useTransition(debt, { duration: 1000, transition: TransitionPresets.easeOutExpo });
+
+// 📈 LÓGICA FINANCIERA REAL (EA)
+const interestRateEA = 35.5; // Tasa promedio de tarjetas
+const monthlyRate = computed(() => Math.pow(1 + interestRateEA / 100, 1 / 12) - 1);
+
+const totalToPay = computed(() => {
+    const P = amount.value || 0;
+    const n = installments.value;
+    const r = monthlyRate.value;
+    if (n <= 1) return P;
+    // Fórmula de amortización francesa
+    const monthly = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return monthly * n;
 });
 
-const debt = computed(() => amount.value);
-const animatedDebt = useTransition(debt, {
-    duration: 1000,
-    transition: TransitionPresets.easeOutExpo,
-});
+const interestPaid = computed(() => Math.max(0, totalToPay.value - (amount.value || 0)));
+const animatedInterest = useTransition(interestPaid, { duration: 1000, transition: TransitionPresets.easeOutExpo });
 
 const monthlyPayment = computed(() => {
-    if (installments.value <= 1) return debt.value;
-    return debt.value / installments.value;
+    const n = installments.value;
+    return totalToPay.value / n;
 });
-const animatedMonthlyPayment = useTransition(monthlyPayment, {
-    duration: 1000,
-    transition: TransitionPresets.easeOutExpo,
-});
+const animatedMonthlyPayment = useTransition(monthlyPayment, { duration: 1000, transition: TransitionPresets.easeOutExpo });
 
 const usage = computed(() => Math.min((debt.value / creditLimit) * 100, 100));
-const animatedUsage = useTransition(usage, {
-    duration: 1000,
-    transition: TransitionPresets.easeOutExpo,
-});
+const animatedUsage = useTransition(usage, { duration: 1000, transition: TransitionPresets.easeOutExpo });
 
-// 🧠 Inteligencia de la App
+// 🧠 Inteligencia Pro
+const financialScore = computed(() => {
+    let score = 100;
+    score -= (usage.value > 80 ? 40 : usage.value / 2);
+    score -= (installments.value > 1 ? installments.value * 3 : 0);
+    return Math.max(0, Math.min(100, score));
+});
+const animatedScore = useTransition(financialScore, { duration: 1500, transition: TransitionPresets.easeOutExpo });
+
 const feedback = computed(() => {
-    if (usage.value > 85) return { 
-        text: '¡Peligro! Estás casi al límite del cupo.', 
-        color: 'text-red-400', 
-        bg: 'bg-red-400/10',
-        border: 'border-red-500/20',
-        ping: 'bg-red-400',
-        dot: 'bg-red-500'
-    };
-    if (usage.value > 60) return { 
-        text: 'Uso alto. Podría afectar tu score crediticio.', 
-        color: 'text-orange-400', 
-        bg: 'bg-orange-400/10',
-        border: 'border-orange-500/20',
-        ping: 'bg-orange-400',
-        dot: 'bg-orange-500'
-    };
-    if (usage.value > 40) return { 
-        text: 'Buen ritmo, pero vigila tus fechas de corte.', 
-        color: 'text-yellow-400', 
-        bg: 'bg-yellow-400/10',
-        border: 'border-yellow-500/20',
-        ping: 'bg-yellow-400',
-        dot: 'bg-yellow-500'
-    };
-    return { 
-        text: 'Control perfecto. Tu salud financiera brilla.', 
-        color: 'text-emerald-400', 
-        bg: 'bg-emerald-400/10',
-        border: 'border-emerald-500/20',
-        ping: 'bg-emerald-400',
-        dot: 'bg-emerald-500'
-    };
+    if (usage.value > 95) return { text: '¡CUPON SUPERADO! Transacción en riesgo.', color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-500/20', ping: 'bg-red-400', dot: 'bg-red-500' };
+    if (usage.value > 70) return { text: '⚠️ Uso crítico del cupo detectado.', color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-500/20', ping: 'bg-orange-400', dot: 'bg-orange-500' };
+    if (installments.value > 6) return { text: '🟡 Alerta: Intereses acumulados altos.', color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-500/20', ping: 'bg-yellow-400', dot: 'bg-yellow-500' };
+    return { text: '💎 Estructura financiera óptima.', color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/20', ping: 'bg-emerald-400', dot: 'bg-emerald-500' };
 });
 
 const aiTip = computed(() => {
-    if (installments.value > 6 && amount.value > 1000) return '💡 Tip Pro: Diferir a tantas cuotas generará intereses altos. ¡Intenta bajar a 3!';
-    if (installments.value === 1) return '💡 ¡Excelente! Comprar a 1 cuota no genera intereses y ganas puntos.';
-    return '💡 Tip: Recuerda que FinTrack te avisará 2 días antes de tu fecha de pago.';
+    if (installments.value > 1) {
+        return `🤖 Análisis: Pagarás $${Math.round(interestPaid.value).toLocaleString()} en intereses. Diferir a 1 cuota te ahorraría este monto.`;
+    }
+    return '💎 Inteligencia Artificial: Comprar a 1 cuota es costo $0. ¡Decisión brillante!';
 });
 
 const features = [
-    {
-        title: 'Todas tus tarjetas',
-        desc: 'Cupo, franquicia, fechas de corte y pago en un solo lugar.',
-        icon: 'card',
-    },
-    {
-        title: 'Compras y cuotas',
-        desc: 'Registra compras al instante. Una cuota sin interés; varias con cálculo según tu EA.',
-        icon: 'installment',
-    },
-    {
-        title: 'Quién debe qué',
-        desc: 'Divide gastos por porcentaje o monto y marca lo que te deben.',
-        icon: 'split',
-    },
-    {
-        title: 'Cortes y pagos',
-        desc: 'Agrupa cuotas por periodo, registra pagos y ve el saldo real.',
-        icon: 'cut',
-    },
+    { title: 'Todas tus tarjetas', desc: 'Cupo, franquicia, fechas de corte y pago en un solo lugar.', icon: 'card' },
+    { title: 'Compras y cuotas', desc: 'Registra compras al instante. Una cuota sin interés; varias con cálculo según tu EA.', icon: 'installment' },
+    { title: 'Quién debe qué', desc: 'Divide gastos por porcentaje o monto y marca lo que te deben.', icon: 'split' },
+    { title: 'Cortes y pagos', desc: 'Agrupa cuotas por periodo, registra pagos y ve el saldo real.', icon: 'cut' },
 ];
 </script>
 
@@ -222,81 +204,113 @@ const features = [
                 </div>
 
                 <!-- HERO (INTERACTIVO 🔥) -->
-                <div class="relative mx-auto mt-20 max-w-xl">
-                    <div class="absolute -inset-6 blur-3xl bg-emerald-500/20 rounded-full" />
+                <div class="relative mx-auto mt-20 max-w-xl group">
+                    <div class="absolute -inset-6 blur-3xl bg-emerald-500/10 rounded-full group-hover:bg-emerald-500/20 transition duration-1000" />
 
-                    <div class="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 space-y-6 shadow-2xl">
-
-                        <!-- INPUT -->
-                        <div>
-                            <p class="text-sm text-slate-400 mb-2">Simula una compra</p>
-                            <input
-                                v-model="amount"
-                                type="number"
-                                placeholder="$ 0"
-                                class="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-400 transition"
-                            />
+                    <div 
+                        ref="targetCard"
+                        :style="{ transform: cardTransform }"
+                        class="relative rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur-2xl p-8 space-y-8 shadow-2xl transition-transform duration-200 ease-out overflow-hidden"
+                    >
+                        <!-- Scanner Beam -->
+                        <div class="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+                            <div class="scanner-line w-full h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-40" />
                         </div>
 
-                        <!-- CUOTAS -->
-                        <div>
-                            <p class="text-sm text-slate-400 mb-2">Cuotas</p>
-                            <input
-                                type="range"
-                                min="1"
-                                max="12"
-                                v-model="installments"
-                                class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                            />
-                            <p class="text-xs text-slate-400 mt-2">{{ installments }} {{ installments == 1 ? 'cuota' : 'cuotas' }}</p>
+                        <!-- Header Simulador -->
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-bold text-white mb-1">Simulador Pro</h2>
+                                <p class="text-xs text-slate-500">Tasa EA Simulada: {{ interestRateEA }}%</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Health Score</p>
+                                <span 
+                                    class="text-2xl font-black italic"
+                                    :class="financialScore > 70 ? 'text-emerald-400' : (financialScore > 40 ? 'text-yellow-400' : 'text-rose-500')"
+                                >
+                                    {{ Math.round(animatedScore) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- INPUTS -->
+                        <div class="grid gap-6 sm:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-tight">Monto Compra</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                                    <input
+                                        v-model="amount"
+                                        type="number"
+                                        class="w-full bg-white/5 border border-white/10 rounded-xl px-8 py-3 text-white font-bold focus:outline-none focus:border-emerald-400/50 transition"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-tight">Cuotas</label>
+                                    <span class="text-xs font-bold text-emerald-400">{{ installments }}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="36"
+                                    v-model="installments"
+                                    class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                                />
+                            </div>
                         </div>
 
                         <!-- RESULTADOS -->
-                        <div class="border-t border-white/10 pt-6 space-y-4">
-                            <div class="flex justify-between items-end">
-                                <div>
-                                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Deuda Estimada</p>
-                                    <p class="text-2xl font-bold text-white tabular-nums">
-                                        ${{ Math.round(animatedDebt).toLocaleString() }}
+                        <div class="border-t border-white/5 pt-8 space-y-6">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+                                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Pago Mensual</p>
+                                    <p class="text-xl font-bold text-white tabular-nums">
+                                        ${{ Math.round(animatedMonthlyPayment).toLocaleString() }}
                                     </p>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Cuota Mensual</p>
-                                    <p class="text-xl font-bold text-emerald-400 tabular-nums">
-                                        ${{ animatedMonthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}
+                                <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+                                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Intereses Totales</p>
+                                    <p class="text-xl font-bold text-rose-400 tabular-nums">
+                                        ${{ Math.round(animatedInterest).toLocaleString() }}
                                     </p>
                                 </div>
                             </div>
 
                             <div class="space-y-2">
-                                <div class="flex justify-between text-xs font-medium">
-                                    <span class="text-slate-400">Uso del cupo proyectado</span>
+                                <div class="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                                    <span class="text-slate-500">Uso de Cupo</span>
                                     <span :class="feedback.color">{{ animatedUsage.toFixed(1) }}%</span>
                                 </div>
-                                <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5">
+                                <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                     <div
-                                        class="h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_15px_rgba(52,211,153,0.3)]"
-                                        :class="usage > 85 ? 'bg-red-500' : (usage > 60 ? 'bg-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')"
+                                        class="h-full transition-all duration-500 ease-out shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                        :class="usage > 95 ? 'bg-red-500' : (usage > 70 ? 'bg-orange-500' : 'bg-emerald-500')"
                                         :style="{ width: animatedUsage + '%' }"
                                     />
                                 </div>
                             </div>
 
-                            <!-- FEEDBACK DINÁMICO (AI INSIGHT) -->
+                            <!-- AI INSIGHT PANEL -->
                             <div 
-                                class="rounded-xl p-4 transition-all duration-500 border"
+                                class="relative group/insight rounded-2xl p-5 border transition-all duration-500"
                                 :class="[feedback.bg, feedback.color, feedback.border]"
                             >
-                                <p class="text-sm font-semibold flex items-center gap-2">
-                                    <span class="relative flex h-2 w-2">
-                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="feedback.ping"></span>
-                                      <span class="relative inline-flex rounded-full h-2 w-2" :class="feedback.dot"></span>
-                                    </span>
-                                    {{ feedback.text }}
-                                </p>
-                                <p class="text-xs mt-2 opacity-80 leading-relaxed italic">
-                                    {{ aiTip }}
-                                </p>
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-1">
+                                        <span class="relative flex h-3 w-3">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="feedback.ping"></span>
+                                            <span class="relative inline-flex rounded-full h-3 w-3" :class="feedback.dot"></span>
+                                        </span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm font-bold tracking-tight">{{ feedback.text }}</p>
+                                        <p class="text-xs opacity-70 leading-relaxed font-medium">{{ aiTip }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -433,3 +447,19 @@ const features = [
         </footer>
     </div>
 </template>
+
+<style scoped>
+@keyframes scan {
+    0% { transform: translateY(-100%); }
+    50% { transform: translateY(800%); }
+    100% { transform: translateY(-100%); }
+}
+.scanner-line {
+    animation: scan 4s linear infinite;
+    box-shadow: 0 0 15px 1px rgba(52, 211, 153, 0.5);
+}
+
+.perspective-1000 {
+    perspective: 1000px;
+}
+</style>
