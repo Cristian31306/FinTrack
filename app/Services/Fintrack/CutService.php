@@ -20,17 +20,23 @@ class CutService
         $close = CarbonImmutable::parse($statementClose)->startOfDay();
         [$periodStart, $periodEnd] = $this->dates->periodBoundsForStatementClose($close, $card->statement_day);
 
-        return Cut::firstOrCreate(
-            [
-                'credit_card_id' => $card->id,
-                'period_end' => $periodEnd->toDateString(),
-            ],
-            [
-                'period_start' => $periodStart->toDateString(),
-                'status' => 'abierto',
-                'total_accrued' => 0,
-            ]
-        );
+        // Buscar el corte existente ignorando las horas/formatos internos (soluciona UNIQUE constraints en SQLite)
+        $existing = Cut::query()
+            ->where('credit_card_id', $card->id)
+            ->whereDate('period_end', $periodEnd->toDateString())
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return Cut::create([
+            'credit_card_id' => $card->id,
+            'period_end' => $periodEnd->toDateString(),
+            'period_start' => $periodStart->toDateString(),
+            'status' => 'abierto',
+            'total_accrued' => 0,
+        ]);
     }
 
     public function recalculateCutTotals(Cut $cut): void

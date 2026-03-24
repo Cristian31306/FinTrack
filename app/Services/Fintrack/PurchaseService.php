@@ -30,6 +30,7 @@ class PurchaseService
             $purchase = Purchase::query()->create([
                 'user_id' => $userId,
                 'credit_card_id' => $card->id,
+                'category_id' => $data['category_id'] ?? null,
                 'name' => $data['name'],
                 'total_amount' => $data['total_amount'],
                 'installments_count' => $data['installments_count'],
@@ -72,15 +73,52 @@ class PurchaseService
         });
     }
 
-    public function updateBasics(Purchase $purchase, array $data): Purchase
+    public function fullUpdate(Purchase $purchase, array $data, array $responsibles = []): Purchase
     {
-        $purchase->fill([
-            'name' => $data['name'] ?? $purchase->name,
-            'purchase_date' => $data['purchase_date'] ?? $purchase->purchase_date,
-        ]);
-        $purchase->save();
+        return DB::transaction(function () use ($purchase, $data, $responsibles) {
+            // 1. Borrar cuotas viejas y recalcular sus cortes para dejar los saldos limpios
+            $cutIds = $purchase->installments()->pluck('cut_id')->unique()->filter();
+            $purchase->installments()->delete();
+            $purchase->purchaseResponsibles()->delete(); // Borramos responsables viejos para rehacerlos
 
-        return $purchase;
+            foreach ($cutIds as $cutId) {
+                $cut = \App\Models\Cut::query()->find($cutId);
+                if ($cut) {
+                    $this->cuts->recalculateCutTotals($cut);
+                }
+            }
+
+            // 2. Actualizar las propiedades fundamentales (esto cambia todo el juego matemático)
+            $purchase->fill([
+                'credit_card_id' => $data['credit_card_id'],
+                'category_id' => $data['category_id'] ?? null,
+                'name' => $data['name'],
+                'total_amount' => $data['total_amount'],
+                'installments_count' => $data['installments_count'],
+                'purchase_date' => $data['purchase_date'],
+            ]);
+            $purchase->save();
+
+            // 3. Reconstruir Amortización y Cuotas usando el core
+            $this->buildSchedule($purchase);
+
+            // 4. Reconstruir Responsables
+            if (count($responsibles) > 0) {
+                foreach ($responsibles as $r) {
+                    $purchase->purchaseResponsibles()->create([
+                        'responsible_person_id' => $r['responsible_person_id'],
+                        'split_type' => $r['split_type'],
+                        'split_value' => $r['split_value'],
+                        'owed_amount' => $r['split_type'] === 'porcentaje'
+                            ? ($data['total_amount'] * ($r['split_value'] / 100))
+                            : $r['split_value'],
+                        'status' => 'pendiente',
+                    ]);
+                }
+            }
+
+            return $purchase->load(['installments.cut', 'purchaseResponsibles.responsiblePerson', 'creditCard']);
+        });
     }
 
     public function delete(Purchase $purchase): void

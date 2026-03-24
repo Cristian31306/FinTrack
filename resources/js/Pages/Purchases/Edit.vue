@@ -9,21 +9,30 @@ import { formatCardLabel } from '@/utils/cardLabel';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
+    purchase: Object,
     creditCards: Array,
     responsiblePeople: Array,
     categories: Array,
 });
 
-const splitMode = ref('porcentaje');
+const defaultSplitMode = props.purchase.purchase_responsibles?.length 
+    ? props.purchase.purchase_responsibles[0].split_type 
+    : 'porcentaje';
+
+const splitMode = ref(defaultSplitMode);
 
 const form = useForm({
-    credit_card_id: props.creditCards[0]?.id ?? '',
-    category_id: props.categories[0]?.id ?? '',
-    name: '',
-    total_amount: '',
-    installments_count: 1,
-    purchase_date: new Date().toISOString().slice(0, 10),
-    responsibles: [],
+    credit_card_id: props.purchase.credit_card_id,
+    category_id: props.purchase.category_id ?? '',
+    name: props.purchase.name,
+    total_amount: props.purchase.total_amount,
+    installments_count: props.purchase.installments_count,
+    purchase_date: props.purchase.purchase_date ? props.purchase.purchase_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    responsibles: props.purchase.purchase_responsibles ? props.purchase.purchase_responsibles.map(r => ({
+        responsible_person_id: r.responsible_person_id,
+        split_type: r.split_type,
+        split_value: Number(r.split_value),
+    })) : [],
 });
 
 import * as LucideIcons from 'lucide-vue-next';
@@ -52,23 +61,23 @@ function submit() {
     form.responsibles = form.responsibles.filter(
         (r) => r.responsible_person_id && r.split_value !== '' && r.split_value != null,
     );
-    form.post(route('purchases.store'));
+    form.patch(route('purchases.update', props.purchase.id));
 }
 </script>
 
 <template>
-    <Head title="Nueva compra" />
+    <Head title="Editar compra" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
                 <Link
-                    :href="route('purchases.index')"
+                    :href="route('purchases.show', purchase.id)"
                     class="text-sm text-gray-600 hover:text-gray-900"
                     >← Volver</Link
                 >
                 <h2 class="text-xl font-semibold text-gray-800">
-                    Registrar compra
+                    Editar: {{ purchase.name }}
                 </h2>
             </div>
         </template>
@@ -162,6 +171,7 @@ function submit() {
                             class="mt-1 block w-full"
                             required
                         />
+                        <InputError class="mt-2" :message="form.errors.total_amount" />
                     </div>
                     <div>
                         <InputLabel
@@ -177,9 +187,8 @@ function submit() {
                             class="mt-1 block w-full"
                             required
                         />
-                        <p class="mt-1 text-xs text-gray-500">
-                            Una cuota: sin interés. Varias: interés según EA de
-                            la tarjeta (modelo simplificado).
+                        <p class="mt-1 text-[11px] text-amber-600 font-medium">
+                            <span class="font-bold">Aviso:</span> Si cambias el valor o cuotas, se borrarán las cuotas anteriores y se recalculará desde cero todo el proceso financiero.
                         </p>
                     </div>
                     <div>
@@ -283,7 +292,7 @@ function submit() {
                     </div>
 
                     <PrimaryButton :disabled="form.processing">
-                        Guardar compra
+                        Guardar cambios
                     </PrimaryButton>
                 </form>
             </div>

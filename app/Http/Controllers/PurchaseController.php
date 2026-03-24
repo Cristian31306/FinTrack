@@ -22,7 +22,7 @@ class PurchaseController extends Controller
     {
         $list = Purchase::query()
             ->where('user_id', $request->user()->id)
-            ->with(['creditCard', 'installments', 'purchaseResponsibles.responsiblePerson'])
+            ->with(['creditCard', 'category', 'installments', 'purchaseResponsibles.responsiblePerson'])
             ->orderByDesc('purchase_date')
             ->paginate(15);
 
@@ -43,9 +43,15 @@ class PurchaseController extends Controller
             ->orderBy('name')
             ->get();
 
+        $categories = \App\Models\Category::whereNull('user_id')
+            ->orWhere('user_id', $request->user()->id)
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Purchases/Create', [
             'creditCards' => $cards,
             'responsiblePeople' => $people,
+            'categories' => $categories,
         ]);
     }
 
@@ -53,6 +59,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'credit_card_id' => ['required', 'exists:credit_cards,id'],
+            'category_id' => ['nullable', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
             'total_amount' => ['required', 'numeric', 'min:0.01'],
             'installments_count' => ['required', 'integer', 'min:1', 'max:360'],
@@ -92,10 +99,32 @@ class PurchaseController extends Controller
     {
         $this->authorizePurchase($request, $purchase);
 
-        $purchase->load(['creditCard', 'installments.cut', 'purchaseResponsibles.responsiblePerson']);
+        $purchase->load(['creditCard', 'installments.cut', 'purchaseResponsibles.responsiblePerson', 'category']);
 
         return Inertia::render('Purchases/Show', [
             'purchase' => $purchase,
+        ]);
+    }
+    public function edit(Request $request, Purchase $purchase): \Inertia\Response
+    {
+        $this->authorizePurchase($request, $purchase);
+
+        $purchase->load(['purchaseResponsibles']);
+
+        return Inertia::render('Purchases/Edit', [
+            'purchase' => $purchase,
+            'creditCards' => CreditCard::query()
+                ->where('user_id', $request->user()->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'last_4_digits']),
+            'responsiblePeople' => ResponsiblePerson::query()
+                ->where('user_id', $request->user()->id)
+                ->orderBy('name')
+                ->get(),
+            'categories' => \App\Models\Category::whereNull('user_id')
+                ->orWhere('user_id', $request->user()->id)
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -104,13 +133,21 @@ class PurchaseController extends Controller
         $this->authorizePurchase($request, $purchase);
 
         $validated = $request->validate([
+            'credit_card_id' => ['required', 'exists:credit_cards,id'],
+            'category_id' => ['nullable', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
+            'total_amount' => ['required', 'numeric', 'min:0.01'],
+            'installments_count' => ['required', 'integer', 'min:1', 'max:360'],
             'purchase_date' => ['required', 'date'],
+            'responsibles' => ['nullable', 'array'],
+            'responsibles.*.responsible_person_id' => ['required', 'exists:responsible_people,id'],
+            'responsibles.*.split_type' => ['required', 'in:porcentaje,monto'],
+            'responsibles.*.split_value' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $this->purchases->updateBasics($purchase, $validated);
+        $this->purchases->fullUpdate($purchase, $validated, $validated['responsibles'] ?? []);
 
-        return redirect()->route('purchases.show', $purchase)->with('success', 'Compra actualizada.');
+        return redirect()->route('purchases.show', $purchase)->with('success', 'Compra actualizada estructuralmente. Se han recalculado sus cuotas, saldos y cortes.');
     }
 
     public function destroy(Request $request, Purchase $purchase): RedirectResponse

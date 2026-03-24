@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import AiAssistant from '@/Components/AiAssistant.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
@@ -10,11 +11,19 @@ import { Link, usePage } from '@inertiajs/vue3';
 const page = usePage();
 const flashSuccess = ref(page.props.flash?.success ?? null);
 
+let flashTimeout = null;
 watch(
     () => page.props.flash?.success,
     (v) => {
         flashSuccess.value = v ?? null;
+        if (v) {
+            clearTimeout(flashTimeout);
+            flashTimeout = setTimeout(() => {
+                flashSuccess.value = null;
+            }, 4000);
+        }
     },
+    { immediate: true }
 );
 
 const showingNavigationDropdown = ref(false);
@@ -22,12 +31,40 @@ const showingNavigationDropdown = ref(false);
 
 <template>
     <div>
-        <div
-            v-if="flashSuccess"
-            class="border-b border-green-200 bg-green-50 px-4 py-2 text-center text-sm text-green-800"
+        <!-- Toast Notification -->
+        <transition
+            enter-active-class="transition ease-out duration-300 transform"
+            enter-from-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            enter-to-class="opacity-100 translate-y-0 sm:scale-100"
+            leave-active-class="transition ease-in duration-200"
+            leave-from-class="opacity-100 sm:scale-100"
+            leave-to-class="opacity-0 sm:scale-95"
         >
-            {{ flashSuccess }}
-        </div>
+            <div
+                v-if="flashSuccess"
+                class="fixed bottom-24 right-5 sm:top-24 sm:right-6 sm:bottom-auto z-[100] w-full max-w-sm overflow-hidden rounded-xl bg-green-50 border border-green-200 shadow-xl ring-1 ring-black/5"
+            >
+                <div class="p-4 flex items-start gap-4">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <svg class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="w-0 flex-1">
+                        <p class="text-[15px] font-semibold text-green-900 font-outfit">¡Operación exitosa!</p>
+                        <p class="mt-1 text-[13px] text-green-700 leading-snug">{{ flashSuccess }}</p>
+                    </div>
+                    <div class="ml-4 flex flex-shrink-0">
+                        <button @click="flashSuccess = null" type="button" class="inline-flex rounded-lg bg-green-50 p-1.5 text-green-500 hover:bg-green-100 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-green-50 transition-colors">
+                            <span class="sr-only">Cerrar</span>
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
         <div class="min-h-screen">
             <!-- Navbar -->
             <nav class="sticky top-0 z-50 border-b border-brand-100 bg-white/80 backdrop-blur-md">
@@ -61,6 +98,9 @@ const showingNavigationDropdown = ref(false);
                                 </NavLink>
                                 <NavLink :href="route('responsible-people.index')" :active="route().current('responsible-people.*')">
                                     Responsables
+                                </NavLink>
+                                <NavLink :href="route('categories.index')" :active="route().current('categories.*')">
+                                    Categorías
                                 </NavLink>
                                 <NavLink :href="route('cuts.index')" :active="route().current('cuts.*')">
                                     Cortes
@@ -164,6 +204,9 @@ const showingNavigationDropdown = ref(false);
                             <ResponsiveNavLink :href="route('responsible-people.index')" :active="route().current('responsible-people.*')">
                                 Responsables
                             </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('categories.index')" :active="route().current('categories.*')">
+                                Categorías
+                            </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('cuts.index')" :active="route().current('cuts.*')">
                                 Cortes
                             </ResponsiveNavLink>
@@ -210,7 +253,9 @@ const showingNavigationDropdown = ref(false);
                         enter-from-class="-translate-y-4 opacity-0"
                         enter-to-class="translate-y-0 opacity-100"
                     >
-                        <slot name="header" />
+                        <div v-if="$slots.header">
+                            <slot name="header" />
+                        </div>
                     </transition>
                 </div>
             </header>
@@ -223,12 +268,17 @@ const showingNavigationDropdown = ref(false);
                     enter-from-class="translate-y-4 opacity-0"
                     enter-to-class="translate-y-0 opacity-100"
                 >
-                    <slot />
+                    <div key="slot-content">
+                        <slot />
+                    </div>
                 </transition>
             </main>
 
             <!-- Footer Decorative -->
             <div class="fixed bottom-0 left-0 -z-10 h-64 w-full bg-gradient-to-t from-brand-50/50 to-transparent opacity-50"></div>
+            
+            <!-- Global AI Assistant Chat -->
+            <AiAssistant />
         </div>
     </div>
 </template>

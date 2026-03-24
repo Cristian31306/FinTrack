@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\CardPaymentController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CutController;
 use App\Http\Controllers\DashboardController;
@@ -23,7 +25,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('credit-cards', CreditCardController::class)->except(['show']);
     Route::resource('responsible-people', ResponsiblePersonController::class)->except(['show']);
-    Route::resource('purchases', PurchaseController::class)->except(['edit']);
+    Route::resource('purchases', PurchaseController::class);
+    Route::resource('categories', CategoryController::class)->except(['show']);
     Route::post('/payments', [CardPaymentController::class, 'store'])->name('payments.store');
     Route::get('/cuts', [CutController::class, 'index'])->name('cuts.index');
     Route::get('/cuts/{cut}', [CutController::class, 'show'])->name('cuts.show');
@@ -36,6 +39,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         '/purchases/{purchase}/responsibles/{purchase_responsible}/pendiente',
         [PurchaseResponsibleController::class, 'markPending']
     )->name('purchase-responsibles.pending');
+
+    Route::post('/ai/chat', [\App\Http\Controllers\AiController::class, 'chat'])->name('ai.chat');
 });
 
 Route::middleware('auth')->group(function () {

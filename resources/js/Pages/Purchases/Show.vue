@@ -1,20 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { formatCardLabel } from '@/utils/cardLabel';
 import { formatDateDMY } from '@/utils/dates';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import * as LucideIcons from 'lucide-vue-next';
 
 const props = defineProps({
     purchase: Object,
-});
-
-const form = useForm({
-    name: props.purchase.name,
-    purchase_date: props.purchase.purchase_date?.slice?.(0, 10) ?? props.purchase.purchase_date,
 });
 
 function money(n) {
@@ -22,10 +14,6 @@ function money(n) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
-}
-
-function saveBasics() {
-    form.patch(route('purchases.update', props.purchase.id));
 }
 
 function markPaid(pr) {
@@ -55,168 +43,150 @@ function markPending(pr) {
             <div class="flex items-center gap-4">
                 <Link
                     :href="route('purchases.index')"
-                    class="text-sm text-gray-600 hover:text-gray-900"
-                    >← Volver</Link
+                    class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
                 >
-                <h2 class="text-xl font-semibold text-gray-800">
-                    {{ purchase.name }}
-                </h2>
+                    <component :is="LucideIcons.ArrowLeft" class="h-5 w-5" />
+                </Link>
+                <div>
+                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+                        {{ purchase.name }}
+                    </h2>
+                    <p class="mt-1 text-sm font-medium text-slate-500">
+                        Detalle de movimiento del {{ formatDateDMY(purchase.purchase_date) }}
+                    </p>
+                </div>
             </div>
         </template>
 
         <div class="py-8">
-            <div class="mx-auto max-w-4xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-                >
-                    <p class="text-sm text-gray-600">
-                        Tarjeta:
-                        <strong>{{
-                            formatCardLabel(purchase.credit_card)
-                        }}</strong>
-                        · Total:
-                        <strong>{{ money(purchase.total_amount) }}</strong>
-                        · Cuotas: {{ purchase.installments_count }}
-                    </p>
-                    <form
-                        class="mt-4 grid gap-4 sm:grid-cols-2"
-                        @submit.prevent="saveBasics"
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                
+                <!-- Action Bar -->
+                <div class="mb-8 flex flex-col sm:flex-row justify-end gap-3">
+                    <Link
+                        :href="route('purchases.edit', purchase.id)"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-[15px] font-bold text-white shadow-lg shadow-brand-500/25 transition-all hover:scale-105 hover:bg-brand-500"
                     >
-                        <div>
-                            <InputLabel
-                                for="name"
-                                value="Nombre"
-                            />
-                            <TextInput
-                                id="name"
-                                v-model="form.name"
-                                class="mt-1 block w-full"
-                            />
-                            <InputError
-                                class="mt-2"
-                                :message="form.errors.name"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel
-                                for="purchase_date"
-                                value="Fecha"
-                            />
-                            <TextInput
-                                id="purchase_date"
-                                v-model="form.purchase_date"
-                                type="date"
-                                class="mt-1 block w-full"
-                            />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <PrimaryButton :disabled="form.processing"
-                                >Guardar cambios</PrimaryButton
-                            >
-                        </div>
-                    </form>
+                        <component :is="LucideIcons.Settings2" class="h-5 w-5" />
+                        Editar Todos los Detalles
+                    </Link>
                 </div>
 
-                <div
-                    class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-                >
-                    <h3 class="text-lg font-medium text-gray-900">
-                        Cuotas
-                    </h3>
-                    <table class="mt-4 min-w-full text-sm">
-                        <thead>
-                            <tr class="border-b text-left text-gray-600">
-                                <th class="py-2">#</th>
-                                <th class="py-2">Capital</th>
-                                <th class="py-2">Interés</th>
-                                <th class="py-2">Total</th>
-                                <th class="py-2">Cierre estado</th>
-                                <th class="py-2">Corte</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr
-                                v-for="ins in purchase.installments"
-                                :key="ins.id"
-                                class="border-b border-gray-50"
-                            >
-                                <td class="py-2">{{ ins.installment_number }}</td>
-                                <td class="py-2">{{ money(ins.principal_amount) }}</td>
-                                <td class="py-2">{{ money(ins.interest_amount) }}</td>
-                                <td class="py-2 font-medium">
-                                    {{ money(ins.total_amount) }}
-                                </td>
-                                <td class="py-2 text-gray-600">
-                                    {{
-                                        formatDateDMY(ins.statement_close_date)
-                                    }}
-                                </td>
-                                <td class="py-2">
-                                    <Link
-                                        v-if="ins.cut_id"
-                                        :href="route('cuts.show', ins.cut_id)"
-                                        class="text-indigo-600 hover:underline"
-                                        >Ver</Link
-                                    >
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div
-                    v-if="purchase.purchase_responsibles?.length"
-                    class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-                >
-                    <h3 class="text-lg font-medium text-gray-900">
-                        Responsables
-                    </h3>
-                    <ul class="mt-4 divide-y divide-gray-100 text-sm">
-                        <li
-                            v-for="pr in purchase.purchase_responsibles"
-                            :key="pr.id"
-                            class="flex flex-wrap items-center justify-between gap-2 py-3"
-                        >
+                <!-- Bento Overview -->
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-3 mb-8">
+                    <!-- Total y Categoría -->
+                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl md:col-span-2 transition-all hover:shadow-premium-hover">
+                        <div class="absolute -right-4 -top-4 h-48 w-48 rounded-full opacity-10 transition-transform duration-700 group-hover:scale-150" :style="{ backgroundColor: purchase.category?.color || '#cbd5e1' }"></div>
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-end gap-6 h-full relative z-10">
                             <div>
-                                <p class="font-medium text-gray-800">
-                                    {{ pr.responsible_person?.name }}
-                                </p>
-                                <p class="text-gray-600">
-                                    Debe: {{ money(pr.owed_amount) }} ·
-                                    {{ pr.split_type }}:
-                                    {{ pr.split_value }}
-                                </p>
-                                <p
-                                    class="text-xs"
-                                    :class="
-                                        pr.status === 'pagado'
-                                            ? 'text-green-600'
-                                            : 'text-amber-600'
-                                    "
-                                >
-                                    {{ pr.status }}
-                                </p>
+                                <div class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 mb-4 border shadow-sm backdrop-blur-sm" :style="{ borderColor: purchase.category?.color || '#cbd5e1', backgroundColor: (purchase.category?.color || '#cbd5e1') + '15', color: purchase.category?.color || '#475569' }">
+                                    <component :is="purchase.category?.icon ? LucideIcons[purchase.category.icon] : LucideIcons.Tag" class="h-4 w-4" />
+                                    <span class="text-xs font-bold uppercase tracking-wider">{{ purchase.category?.name || 'Sin Categoría' }}</span>
+                                </div>
+                                <h3 class="font-outfit text-5xl sm:text-6xl font-black tracking-tight text-slate-900">
+                                    {{ money(purchase.total_amount) }}
+                                </h3>
+                                <p class="mt-2 text-sm font-bold uppercase tracking-widest text-slate-400">Total de Compra</p>
                             </div>
-                            <div class="flex gap-2">
-                                <button
-                                    v-if="pr.status !== 'pagado'"
-                                    type="button"
-                                    class="rounded bg-gray-800 px-3 py-1 text-xs text-white hover:bg-gray-700"
-                                    @click="markPaid(pr)"
-                                >
-                                    Marcar pagado
-                                </button>
-                                <button
-                                    v-else
-                                    type="button"
-                                    class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                                    @click="markPending(pr)"
-                                >
-                                    Marcar pendiente
-                                </button>
+                            <div class="text-left sm:text-right">
+                                <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Pagado con</p>
+                                <div class="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 border border-slate-200 shadow-sm">
+                                    <component :is="LucideIcons.CreditCard" class="h-5 w-5 text-slate-600" />
+                                    <span class="text-sm font-black tracking-wide text-slate-800">{{ formatCardLabel(purchase.credit_card) }}</span>
+                                </div>
                             </div>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
+
+                    <!-- Cuotas Info -->
+                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-indigo-50/50 p-8 shadow-premium backdrop-blur-xl flex flex-col justify-center items-center text-center transition-all hover:shadow-premium-hover hover:bg-indigo-50/80">
+                        <div class="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3">
+                            <component :is="LucideIcons.CalendarDays" class="h-8 w-8" />
+                        </div>
+                        <h4 class="font-outfit text-5xl font-black text-indigo-900">{{ purchase.installments_count }}</h4>
+                        <p class="mt-2 text-xs font-bold uppercase tracking-widest text-indigo-400">Cuotas Mensuales</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                    
+                    <!-- Installments Table -->
+                    <div class="rounded-[2.5rem] border border-white bg-white/70 p-8 shadow-2xl backdrop-blur-2xl">
+                        <div class="mb-6 flex items-center justify-between">
+                            <h3 class="font-outfit text-2xl font-black text-slate-900">Plan de Amortización</h3>
+                            <div class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-500">
+                                {{ purchase.installments.length }} Registros
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                        <th class="py-3 pr-4">#</th>
+                                        <th class="py-3 px-4">Interés</th>
+                                        <th class="py-3 px-4">Total Cuota</th>
+                                        <th class="py-3 pl-4">Corte Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="ins in purchase.installments" :key="ins.id" class="transition-colors hover:bg-slate-50/50 group">
+                                        <td class="py-4 pr-4">
+                                            <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 text-[10px] font-black text-slate-600 transition-colors group-hover:bg-brand-50 group-hover:text-brand-600">{{ ins.installment_number }}</span>
+                                        </td>
+                                        <td class="py-4 px-4 font-medium text-amber-600">
+                                            {{ money(ins.interest_amount) }}
+                                        </td>
+                                        <td class="py-4 px-4 font-outfit font-black text-slate-900 text-[15px]">
+                                            {{ money(ins.total_amount) }}
+                                        </td>
+                                        <td class="py-4 pl-4 text-xs font-medium text-slate-500">
+                                            <Link v-if="ins.cut_id" :href="route('cuts.show', ins.cut_id)" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-brand-600 hover:bg-brand-100 hover:text-brand-700 transition-colors">
+                                                Cierre {{ formatDateDMY(ins.statement_close_date) }}
+                                                <component :is="LucideIcons.ArrowUpRight" class="h-3 w-3" />
+                                            </Link>
+                                            <span v-else class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-slate-500">
+                                                Cierre {{ formatDateDMY(ins.statement_close_date) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Responsibles -->
+                    <div v-if="purchase.purchase_responsibles?.length" class="flex flex-col gap-6">
+                        <div class="rounded-[2.5rem] border border-white bg-slate-50/50 p-8 shadow-inner ring-1 ring-slate-100">
+                            <h3 class="mb-6 font-outfit text-2xl font-black text-slate-900">Cuentas Claras</h3>
+                            <div class="space-y-4">
+                                <div v-for="pr in purchase.purchase_responsibles" :key="pr.id" class="flex items-center justify-between rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+                                    <div class="flex items-center gap-4">
+                                        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl font-black text-slate-400" :class="pr.status === 'pagado' ? 'bg-emerald-50 text-emerald-600 ring-4 ring-emerald-50/50' : ''">
+                                            {{ pr.responsible_person?.name.charAt(0).toUpperCase() }}
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-slate-900">{{ pr.responsible_person?.name }}</p>
+                                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
+                                                Participación: {{ pr.split_type === 'porcentaje' ? pr.split_value + '%' : 'Fijo' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-outfit text-xl font-black transition-all" :class="pr.status === 'pagado' ? 'text-emerald-600 line-through opacity-70' : 'text-slate-900'">
+                                            {{ money(pr.owed_amount) }}
+                                        </p>
+                                        <button v-if="pr.status !== 'pagado'" @click="markPaid(pr)" class="mt-1 text-[10px] font-bold uppercase tracking-widest text-brand-600 hover:text-brand-700 hover:underline transition-all">
+                                            Marcar Pagado
+                                        </button>
+                                        <button v-else @click="markPending(pr)" class="mt-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 hover:underline transition-all">
+                                            Deshacer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- End Responsibles -->
+
                 </div>
             </div>
         </div>

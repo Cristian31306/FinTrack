@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatCardLabel } from '@/utils/cardLabel';
 import { formatDateDMY } from '@/utils/dates';
 import { Head, Link, router } from '@inertiajs/vue3';
+import * as LucideIcons from 'lucide-vue-next';
 
 defineProps({
     purchases: Object,
@@ -83,7 +84,17 @@ function destroy(id) {
                                     {{ formatDateDMY(p.purchase_date) }}
                                 </td>
                                 <td class="px-4 py-3 font-medium text-gray-900">
-                                    {{ p.name }}
+                                    <div class="flex items-center gap-2">
+                                        <div 
+                                            v-if="p.category"
+                                            class="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm"
+                                            :style="{ backgroundColor: p.category.color + '20', color: p.category.color }"
+                                            :title="p.category.name"
+                                        >
+                                            <component :is="LucideIcons[p.category.icon] || LucideIcons.Tag" class="h-4 w-4" />
+                                        </div>
+                                        <span>{{ p.name }}</span>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 text-gray-600">
                                     {{ formatCardLabel(p.credit_card) }}

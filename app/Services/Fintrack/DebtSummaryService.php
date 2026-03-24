@@ -75,6 +75,8 @@ class DebtSummaryService
                 'franchise' => $card->franchise,
                 'last_4_digits' => $card->last_4_digits,
                 'credit_limit' => $limit,
+                'available_credit' => max(0, round($limit - $cardDebt, 2)),
+                'annual_interest_ea' => (float) $card->annual_interest_ea,
                 'debt' => round($cardDebt, 2),
                 'utilization_percent' => $utilization,
                 'cupo_alert' => $utilization >= 80,
@@ -109,12 +111,30 @@ class DebtSummaryService
 
         $alerts = $this->buildAlerts($upcomingCuts);
 
+        $spendingByCategory = Purchase::query()
+            ->where('user_id', $user->id)
+            ->whereMonth('purchase_date', now()->month)
+            ->whereYear('purchase_date', now()->year)
+            ->with('category')
+            ->get()
+            ->groupBy('category_id')
+            ->map(function ($purchases) {
+                $cat = $purchases->first()->category;
+                return [
+                    'name' => $cat?->name ?? 'Sin Categoría',
+                    'amount' => (float) $purchases->sum('total_amount'),
+                    'color' => $cat?->color ?? '#94a3b8',
+                    'icon' => $cat?->icon ?? 'Tag',
+                ];
+            })->values();
+
         return [
             'total_debt' => round($totalDebt, 2),
             'cards' => $cardSummaries,
             'upcoming_cuts' => $upcomingCuts,
             'user_share_pending' => round($userShare, 2),
             'alerts' => $alerts,
+            'spending_by_category' => $spendingByCategory,
         ];
     }
 
