@@ -66,18 +66,18 @@ const financialScore = computed(() => {
 });
 const animatedScore = useTransition(financialScore, { duration: 1500, transition: TransitionPresets.easeOutExpo });
 
+// 🧠 Inteligencia Pro (Estilo Jeeves)
 const feedback = computed(() => {
-    if (usage.value > 95) return { text: '¡CUPON SUPERADO! Transacción en riesgo.', color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-500/20', ping: 'bg-red-400', dot: 'bg-red-500' };
-    if (usage.value > 70) return { text: '⚠️ Uso crítico del cupo detectado.', color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-500/20', ping: 'bg-orange-400', dot: 'bg-orange-500' };
-    if (installments.value > 6) return { text: '🟡 Alerta: Intereses acumulados altos.', color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-500/20', ping: 'bg-yellow-400', dot: 'bg-yellow-500' };
-    return { text: '💎 Estructura financiera óptima.', color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/20', ping: 'bg-emerald-400', dot: 'bg-emerald-500' };
+    if (usage.value > 95) return { text: 'LIMITE CRÍTICO', color: 'text-rose-400', bg: 'bg-rose-400/5', border: 'border-rose-500/10', ping: 'bg-rose-400', dot: 'bg-rose-500' };
+    if (usage.value > 75) return { text: 'USO ELEVADO', color: 'text-amber-400', bg: 'bg-amber-400/5', border: 'border-amber-500/10', ping: 'bg-amber-400', dot: 'bg-amber-500' };
+    return { text: 'ESTADO ÓPTIMO', color: 'text-[#C8B07D]', bg: 'bg-[#C8B07D]/5', border: 'border-[#C8B07D]/20', ping: 'bg-[#C8B07D]', dot: 'bg-[#C8B07D]' };
 });
 
 const aiTip = computed(() => {
     if (installments.value > 1) {
-        return `🤖 Análisis: Pagarás $${Math.round(interestPaid.value).toLocaleString()} en intereses. Diferir a 1 cuota te ahorraría este monto.`;
+        return `Análisis de capital: El interés proyectado es de $${Math.round(interestPaid.value).toLocaleString()}. Optar por 1 pago eliminaría este costo financiero por completo.`;
     }
-    return '💎 Inteligencia Artificial: Comprar a 1 cuota es costo $0. ¡Decisión brillante!';
+    return 'Estrategia recomendada: La compra a una cuota maximiza tu beneficio sin generar cargos adicionales.';
 });
 
 const features = [
@@ -94,11 +94,10 @@ const features = [
     <div
         class="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100 antialiased"
     >
-        <!-- Fondo más vivo -->
+        <!-- Fondo Minimalista -->
         <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-            <div class="absolute w-[600px] h-[600px] bg-emerald-500/20 blur-[140px] animate-pulse top-[-100px] left-[-100px]" />
-            <div class="absolute w-[500px] h-[500px] bg-indigo-500/20 blur-[140px] animate-pulse bottom-[-100px] right-[-100px]" />
-            <div class="absolute inset-0 bg-slate-950/40" />
+            <div class="absolute w-[800px] h-[800px] bg-[#C8B07D]/5 blur-[160px] top-[-200px] left-[-200px]" />
+            <div class="absolute inset-0 bg-black" />
         </div>
 
         <!-- Nav -->
@@ -113,11 +112,11 @@ const features = [
                     class="flex items-center gap-2.5"
                 >
                     <span
-                        class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 text-lg font-black text-slate-950 shadow-lg shadow-emerald-500/20"
+                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black text-xl font-black shadow-lg"
                         >F</span
                     >
                     <span
-                        class="text-lg font-bold tracking-tight text-white"
+                        class="text-xl font-black tracking-tighter text-white uppercase"
                         >FinTrack</span
                     >
                 </Link>
@@ -204,113 +203,92 @@ const features = [
                 </div>
 
                 <!-- HERO (INTERACTIVO 🔥) -->
-                <div class="relative mx-auto mt-20 max-w-xl group">
-                    <div class="absolute -inset-6 blur-3xl bg-emerald-500/10 rounded-full group-hover:bg-emerald-500/20 transition duration-1000" />
+                <div class="relative mx-auto mt-24 max-w-xl group">
+                    <div class="absolute -inset-10 blur-[120px] bg-[#C8B07D]/10 rounded-full opacity-50" />
 
                     <div 
                         ref="targetCard"
                         :style="{ transform: cardTransform }"
-                        class="relative rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur-2xl p-8 space-y-8 shadow-2xl transition-transform duration-200 ease-out overflow-hidden"
+                        class="relative rounded-[2.5rem] border border-white/[0.08] bg-black p-10 space-y-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-out overflow-hidden"
                     >
-                        <!-- Scanner Beam -->
-                        <div class="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
-                            <div class="scanner-line w-full h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-40" />
-                        </div>
-
-                        <!-- Header Simulador -->
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h2 class="text-xl font-bold text-white mb-1">Simulador Pro</h2>
-                                <p class="text-xs text-slate-500">Tasa EA Simulada: {{ interestRateEA }}%</p>
+                        <!-- Header Principal -->
+                        <div class="flex justify-between items-start">
+                            <div class="space-y-1">
+                                <h2 class="text-2xl font-black text-white tracking-tighter uppercase italic">Capital Insight</h2>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Global Credit Simulation · EA {{ interestRateEA }}%</p>
                             </div>
-                            <div class="text-right">
-                                <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Health Score</p>
-                                <span 
-                                    class="text-2xl font-black italic"
-                                    :class="financialScore > 70 ? 'text-emerald-400' : (financialScore > 40 ? 'text-yellow-400' : 'text-rose-500')"
-                                >
-                                    {{ Math.round(animatedScore) }}
-                                </span>
+                            <div class="bg-white/5 rounded-full px-4 py-1 border border-white/5">
+                                <span class="text-[10px] font-black text-[#C8B07D] uppercase tracking-widest">Live Status</span>
                             </div>
                         </div>
 
                         <!-- INPUTS -->
-                        <div class="grid gap-6 sm:grid-cols-2">
-                            <div class="space-y-2">
-                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-tight">Monto Compra</label>
-                                <div class="relative">
-                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                        <div class="space-y-8">
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-end px-1">
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monto de Operación</label>
+                                    <span class="text-xl font-bold text-white tracking-tight">${{ (amount || 0).toLocaleString() }}</span>
+                                </div>
+                                <div class="relative group/input">
                                     <input
                                         v-model="amount"
                                         type="number"
-                                        class="w-full bg-white/5 border border-white/10 rounded-xl px-8 py-3 text-white font-bold focus:outline-none focus:border-emerald-400/50 transition"
+                                        placeholder="Ingrese monto"
+                                        class="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-white font-medium focus:outline-none focus:border-[#C8B07D]/40 focus:bg-white/[0.05] transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div class="space-y-3">
-                                <div class="flex justify-between">
-                                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-tight">Cuotas</label>
-                                    <span class="text-xs font-bold text-emerald-400">{{ installments }}</span>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-end px-1">
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Plazo (Meses)</label>
+                                    <span class="text-xl font-bold text-[#C8B07D] tracking-tight">{{ installments }}</span>
                                 </div>
                                 <input
                                     type="range"
                                     min="1"
                                     max="36"
                                     v-model="installments"
-                                    class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                                    class="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-white"
                                 />
                             </div>
                         </div>
 
                         <!-- RESULTADOS -->
-                        <div class="border-t border-white/5 pt-8 space-y-6">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Pago Mensual</p>
-                                    <p class="text-xl font-bold text-white tabular-nums">
+                        <div class="pt-10 border-t border-white/5 grid gap-8">
+                            <div class="grid grid-cols-2 gap-8 text-center sm:text-left">
+                                <div class="space-y-1">
+                                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cuota Estimada</p>
+                                    <p class="text-3xl font-black text-white tracking-tighter">
                                         ${{ Math.round(animatedMonthlyPayment).toLocaleString() }}
                                     </p>
                                 </div>
-                                <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Intereses Totales</p>
-                                    <p class="text-xl font-bold text-rose-400 tabular-nums">
+                                <div class="space-y-1">
+                                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Costo Financiero</p>
+                                    <p class="text-3xl font-black text-rose-500/90 tracking-tighter">
                                         ${{ Math.round(animatedInterest).toLocaleString() }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="space-y-2">
-                                <div class="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                    <span class="text-slate-500">Uso de Cupo</span>
-                                    <span :class="feedback.color">{{ animatedUsage.toFixed(1) }}%</span>
-                                </div>
-                                <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        class="h-full transition-all duration-500 ease-out shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                                        :class="usage > 95 ? 'bg-red-500' : (usage > 70 ? 'bg-orange-500' : 'bg-emerald-500')"
-                                        :style="{ width: animatedUsage + '%' }"
-                                    />
-                                </div>
-                            </div>
-
-                            <!-- AI INSIGHT PANEL -->
+                            <!-- AI INSIGHT STATUS -->
                             <div 
-                                class="relative group/insight rounded-2xl p-5 border transition-all duration-500"
-                                :class="[feedback.bg, feedback.color, feedback.border]"
+                                class="rounded-[1.5rem] p-6 border transition-all duration-700"
+                                :class="[feedback.bg, feedback.border]"
                             >
-                                <div class="flex items-start gap-3">
-                                    <div class="mt-1">
-                                        <span class="relative flex h-3 w-3">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="relative flex h-2 w-2">
                                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="feedback.ping"></span>
-                                            <span class="relative inline-flex rounded-full h-3 w-3" :class="feedback.dot"></span>
-                                        </span>
+                                            <span class="relative inline-flex rounded-full h-2 w-2" :class="feedback.dot"></span>
+                                        </div>
+                                        <span class="text-[10px] font-black tracking-[0.2em]" :class="feedback.color">{{ feedback.text }}</span>
                                     </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm font-bold tracking-tight">{{ feedback.text }}</p>
-                                        <p class="text-xs opacity-70 leading-relaxed font-medium">{{ aiTip }}</p>
-                                    </div>
+                                    <span class="text-[10px] font-black text-white opacity-40 uppercase tracking-widest">Index {{ Math.round(animatedScore) }}%</span>
                                 </div>
+                                <p class="text-xs font-bold leading-relaxed text-white/80 pr-4">
+                                    {{ aiTip }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -441,25 +419,32 @@ const features = [
         </main>
 
         <footer
-            class="border-t border-white/5 py-8 text-center text-sm text-slate-500"
+            class="border-t border-white/5 py-12 text-center"
         >
-            <p>© {{ new Date().getFullYear() }} FinTrack. Todos los derechos reservados.</p>
+            <p class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">
+                © {{ new Date().getFullYear() }} FinTrack · Private Equity Lab.
+            </p>
         </footer>
     </div>
 </template>
 
 <style scoped>
-@keyframes scan {
-    0% { transform: translateY(-100%); }
-    50% { transform: translateY(800%); }
-    100% { transform: translateY(-100%); }
-}
-.scanner-line {
-    animation: scan 4s linear infinite;
-    box-shadow: 0 0 15px 1px rgba(52, 211, 153, 0.5);
-}
-
 .perspective-1000 {
     perspective: 1000px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
 }
 </style>
