@@ -37,43 +37,82 @@ class GeminiService
             ['role' => 'system', 'content' => $systemPrompt],
         ];
 
-        // Añadir historial (evitamos duplicar tags de éxito)
+        // --- RECONSTRUCCIÓN INTELIGENTE DEL HISTORIAL ---
         foreach ($history as $msg) {
-            if (str_contains($msg['content'] ?? '', '✅')) continue;
-            $messages[] = [
-                'role'    => ($msg['role'] ?? 'bot') === 'bot' ? 'assistant' : 'user',
-                'content' => $msg['content'] ?? '',
-            ];
+            $content = $msg['content'] ?? '';
+            if (str_contains($content, '✅')) continue;
+
+            $role = ($msg['role'] ?? 'bot') === 'bot' ? 'assistant' : 'user';
+
+            // Si es un mensaje del bot que parece una vista previa, lo marcamos como tool_call
+            // Esto ayuda al modelo a entender el estado de la conversación (evita bucles)
+            if ($role === 'assistant' && str_contains($content, 'Vista previa del registro')) {
+                $messages[] = [
+                    'role' => 'assistant',
+                    'content' => null,
+                    'tool_calls' => [
+                        [
+                            'id' => 'call_' . uniqid(),
+                            'type' => 'function',
+                            'function' => [
+                                'name' => 'prepare_purchase',
+                                'arguments' => json_encode(['mock' => true])
+                            ]
+                        ]
+                    ]
+                ];
+                // Y añadimos la respuesta de la herramienta (el texto que el usuario ve)
+                $messages[] = [
+                    'role' => 'tool',
+                    'tool_call_id' => $messages[count($messages)-1]['tool_calls'][0]['id'],
+                    'content' => $content
+                ];
+                continue;
+            }
+
+            $messages[] = ['role' => $role, 'content' => $content];
         }
 
-        // Manejo de Visión (Llama 3.2 Vision)
+        // Manejo de Visión
         if ($image) {
             return $this->chatWithVision($messages, $message, $image);
         }
 
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        // Definición de Herramientas (Functions)
+        // Definición de Herramientas
         $tools = $this->getToolsDefinition();
 
+        // Determinar si debemos forzar create_purchase (si la intención es clara)
+        $confirms = ['si', 'sí', 'dale', 'ok', 'confirmado', 'registrar', 'procede'];
+        $isConfirm = false;
+        $lowerMsg = strtolower($message);
+        foreach ($confirms as $c) {
+            if (str_contains($lowerMsg, $c)) {
+                $isConfirm = true;
+                break;
+            }
+        }
+
         try {
+            $payload = [
+                'model'       => $this->textModel,
+                'messages'    => $messages,
+                'tools'       => $tools,
+                'tool_choice' => $isConfirm ? ['type' => 'function', 'function' => ['name' => 'create_purchase']] : 'auto',
+                'temperature' => 0.4,
+                'max_tokens'  => 1024,
+            ];
+
             $response = Http::withoutVerifying()
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
                 ])
-                ->post($this->baseUrl, [
-                    'model'       => $this->textModel,
-                    'messages'    => $messages,
-                    'tools'       => $tools,
-                    'tool_choice' => 'auto',
-                    'temperature' => 0.6, // Bajamos un poco la temperatura para mayor precisión
-                    'max_tokens'  => 1024,
-                ]);
+                ->post($this->baseUrl, $payload);
 
             if ($response->failed()) {
-                Log::error('Groq API Error: ' . $response->body());
-                return "Lo siento, tuve un problema conectando con mi cerebro (código {$response->status()})";
+                Log::error('Groq Error: ' . $response->body());
+                return "Lo siento, tuve un problema (código {$response->status()})";
             }
 
             $data   = $response->json();
@@ -142,7 +181,7 @@ class GeminiService
         Cache::put("pending_purchase_{$user->id}", $args, now()->addMinutes(10));
 
         // --- RENDERIZADO DE TABLA ---
-        $dateLabel = \Carbon\Carbon::parse($args['purchase_date'])->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
+        $dateLabel = \Illuminate\Support\Carbon::parse($args['purchase_date'])->locale('es')->translatedFormat('j [de] F [de] Y');
         $amountFmt = '$' . number_format($amount, 0, ',', '.');
         $cardName  = $args['credit_card_name'] ?? 'Tarjeta seleccionada';
 
@@ -252,13 +291,17 @@ class GeminiService
         $dashboard['categories'] = \App\Models\Category::where('user_id', $user->id)
             ->get(['id', 'name', 'icon'])
             ->toArray();
+        $dashboard['cards'] = \App\Models\CreditCard::where('user_id', $user->id)
+            ->get(['id', 'name', 'franchise', 'last_4_digits'])
+            ->toArray();
         return $dashboard;
     }
 
     protected function getSystemPrompt(string $userName, array $context): string
     {
         $categories = $context['categories'] ?? [];
-        unset($context['categories']);
+        $cards      = $context['cards'] ?? [];
+        unset($context['categories'], $context['cards']);
         $summary = json_encode($context);
 
         $catList = '';
@@ -266,37 +309,50 @@ class GeminiService
             $catList .= "  - ID {$cat['id']}: \"{$cat['name']}\"\n";
         }
 
+        $cardList = '';
+        foreach ($cards as $card) {
+            $cardList .= "  - ID {$card['id']}: \"{$card['name']}\" (Franquicia: {$card['franchise']}, Últimos 4: {$card['last_4_digits']})\n";
+        }
+
         $today = now()->toDateString();
 
         return <<<PROMPT
-Eres FinTrack AI, el cerebro financiero proactivo de la plataforma. Diseñado por Cristian (Algorah).
-Responde en Español de Colombia con tono premium.
+Eres FinTrack AI, el asistente financiero de élite.
+Responde en Español de Colombia, tono profesional.
 
 HOY ES: {$today}.
 
 ══════════════════════════════════════════
-ESTADO FINANCIERO: {$summary}
+ESTADO FINANCIERO:
+══════════════════════════════════════════
+{$summary}
+
+══════════════════════════════════════════
+TARJETAS DISPONIBLES:
+══════════════════════════════════════════
+{$cardList}
+
 ══════════════════════════════════════════
 CATEGORÍAS DISPONIBLES:
+══════════════════════════════════════════
 {$catList}
 
-🚨 CONTRATO DE CATEGORIZACIÓN (ESTRICTO):
-Busca siempre la coincidencia semántica más fuerte ignorando nombres genéricos:
-- Gasto en Gasolina, Tanqueada, Moto, Terpel, Primax -> USA Categoría de "Transporte".
-- Gasto en D1, Éxito, Rappi, Comida, Almuerzo, Cena -> USA Categoría de "Alimentación" o "Mercado".
-- Gasto en Spotify, Netflix, Disney -> USA "Suscripciones" o "Entretenimiento".
-- NUNCA elijas "Tarjeta" o "Personalizada" si hay una categoría mejor.
+🚨 REGLAS DE CATEGORIZACIÓN (MÁXIMA PRIORIDAD):
+Analiza semánticamente el gasto antes de elegir la categoría:
+- Gasto en Gasolina, Tanqueada, Moto, Terpel, Primax, Carro, Combustible -> USA Categoría "Transporte". NUNCA elijas "Tarjeta".
+- Gasto en Comida, Almuerzo, Cena, Rappi, Mercado, D1, Carulla -> USA Categoría "Alimentación" o "Mercado".
+- NUNCA uses la categoría llamada "Tarjeta" para gastos de combustible o comida. "Tarjeta" es solo si no hay nada más que encaje.
+- Si el usuario menciona "Nu", se refiere a su tarjeta Nu de crédito que aparece en la lista de arriba con su ID.
 
 ══════════════════════════════════════════
-FLUJO DE REGISTRO SEGURO:
+FLUJO DE REGISTRO SEGURO (SIN BUCLES):
 ══════════════════════════════════════════
-1. PASO 1 (Vista Previa): Llama a `prepare_purchase`. Muestra la tabla al usuario.
-2. PASO 2 (Registro Real): Si el usuario confirma (ej. "sí", "dale", "ok", botón clic), llama a `create_purchase`.
-   - NO necesitas pasar argumentos a `create_purchase`, el sistema recuperará los datos del Cache.
-   - Si no has mostrado la vista previa, NUNCA llames a `create_purchase`.
-   - Si el usuario dice "No", pregunta qué dato corregir.
+1. PASO 1 (Vista Previa): Siempre que recibas datos de un gasto, llama a `prepare_purchase`.
+2. PASO 2 (Registro Real): Si ya mostraste la TABLA DE VISTA PREVIA arriba y el usuario confirma (ej. "sí", "dale", "ok", "Sí, registrar"), llama a `create_purchase` INMEDIATAMENTE.
+   - ⛔ NO vuelvas a llamar a `prepare_purchase` si el usuario solo está confirmando lo que ya vio.
+   - Si el usuario dice "No", pregunta qué corregir.
 
-¡Tu misión es que {$userName} tenga un control total de sus gastos sin fricción!
+Tu misión es registrar con precisión y sin bucles para que {$userName} tenga el control total.
 PROMPT;
     }
 
