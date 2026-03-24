@@ -13,10 +13,7 @@ class GeminiService
     protected string $apiKey;
     protected string $baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-    // Modelo con Function Calling (texto)
-    protected string $textModel = 'llama-3.3-70b-versatile';
-
-    // Modelo con visión (sin function calling)
+    protected string $textModel   = 'llama-3.3-70b-versatile';
     protected string $visionModel = 'llama-3.2-11b-vision-preview';
 
     public function __construct(
@@ -28,15 +25,13 @@ class GeminiService
 
     public function chat(User $user, string $message, array $history = [], ?array $image = null): string
     {
-        $context = $this->getUserContext($user);
+        $context      = $this->getUserContext($user);
         $systemPrompt = $this->getSystemPrompt($user->name, $context);
 
-        // Construir mensajes en formato OpenAI
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
         ];
 
-        // Añadir historial
         foreach ($history as $msg) {
             if (str_starts_with($msg['content'], '✅')) continue;
             $messages[] = [
@@ -45,48 +40,74 @@ class GeminiService
             ];
         }
 
-        // Si hay imagen, usar modelo de visión (no soporta function calling)
         if ($image) {
             return $this->chatWithVision($messages, $message, $image);
         }
 
-        // Mensaje del usuario
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        // Herramientas (Function Calling)
         $tools = [
+            // PASO 1: Vista previa (nunca guarda en BD)
             [
                 'type' => 'function',
                 'function' => [
-                    'name'        => 'create_purchase',
-                    'description' => 'Registra una compra REAL en FinTrack. CONDICIONES OBLIGATORIAS antes de llamar esta función: (1) el usuario debe haber indicado EXPLÍCITAMENTE su intención de registrar/añadir un gasto (verbos como "registra", "añade", "compré", "gasté"); (2) el nombre del gasto debe ser descriptivo y específico, NO palabras sueltas como "tarjeta" o "pago"; (3) el monto total_amount debe ser un número positivo mayor a cero, mencionado por el usuario. Si falta cualquiera de estas condiciones, NO llames esta función — en cambio, pregunta al usuario los datos que faltan.',
-                    'parameters'  => [
+                    'name'        => 'prepare_purchase',
+                    'description' => 'Genera una VISTA PREVIA de la compra para que el usuario la revise y apruebe. Llama esta función SIEMPRE que tengas todos los datos (nombre, monto, tarjeta, categoría). NO guarda nada en la base de datos. El usuario deberá confirmar antes de que se ejecute create_purchase.',
+                    'parameters' => [
                         'type'       => 'object',
                         'properties' => [
                             'name' => [
                                 'type'        => 'string',
-                                'description' => 'El nombre del gasto (Ej. "Almuerzo", "Mercado")',
+                                'description' => 'Nombre descriptivo del gasto',
                             ],
                             'total_amount' => [
                                 'type'        => 'number',
-                                'description' => 'El valor monetario de la compra. Sin comas ni etiquetas.',
+                                'description' => 'Valor monetario positivo mayor a 0',
                             ],
                             'credit_card_id' => [
                                 'type'        => 'integer',
-                                'description' => 'El ID numérico exacto de la tarjeta de crédito. Extráelo del CONTEXTO DEL USUARIO.',
+                                'description' => 'ID numérico de la tarjeta',
+                            ],
+                            'credit_card_name' => [
+                                'type'        => 'string',
+                                'description' => 'Nombre de la tarjeta para mostrarlo al usuario',
                             ],
                             'category_id' => [
                                 'type'        => 'integer',
-                                'description' => 'OBLIGATORIO: El ID de la categoría que mejor describa la compra. Infírelo de las CATEGORIAS DISPONIBLES en el CONTEXTO.',
+                                'description' => 'ID de la categoría inferida',
+                            ],
+                            'category_name' => [
+                                'type'        => 'string',
+                                'description' => 'Nombre de la categoría para mostrarlo al usuario',
                             ],
                             'installments_count' => [
                                 'type'        => 'integer',
-                                'description' => 'El número de cuotas (por defecto 1)',
+                                'description' => 'Número de cuotas (por defecto 1)',
                             ],
                             'purchase_date' => [
                                 'type'        => 'string',
-                                'description' => 'La fecha de la compra en formato YYYY-MM-DD. Si no es provista, omítela.',
+                                'description' => 'Fecha de la compra en formato YYYY-MM-DD',
                             ],
+                        ],
+                        'required' => ['name', 'total_amount', 'credit_card_id', 'credit_card_name', 'category_id', 'category_name'],
+                    ],
+                ],
+            ],
+            // PASO 2: Registro real (solo después de confirmación del usuario)
+            [
+                'type' => 'function',
+                'function' => [
+                    'name'        => 'create_purchase',
+                    'description' => 'Registra DEFINITIVAMENTE la compra en la base de datos. SOLO llama esta función cuando el usuario haya respondido con una confirmación explícita como "sí", "confirmar", "dale", "ok", "correcto", "procede" después de ver la vista previa de prepare_purchase. NUNCA llames esta función sin que el usuario haya confirmado primero.',
+                    'parameters' => [
+                        'type'       => 'object',
+                        'properties' => [
+                            'name' => ['type' => 'string'],
+                            'total_amount' => ['type' => 'number'],
+                            'credit_card_id' => ['type' => 'integer'],
+                            'category_id' => ['type' => 'integer'],
+                            'installments_count' => ['type' => 'integer'],
+                            'purchase_date' => ['type' => 'string'],
                         ],
                         'required' => ['name', 'total_amount', 'credit_card_id', 'category_id'],
                     ],
@@ -116,38 +137,68 @@ class GeminiService
                 return "Lo siento, tuve un problema con el asistente (código {$response->status()}): {$errMsg}";
             }
 
-            $data    = $response->json();
-            $choice  = $data['choices'][0]['message'] ?? null;
+            $data   = $response->json();
+            $choice = $data['choices'][0]['message'] ?? null;
 
             if (!$choice) {
                 return "No pude generar una respuesta clara. ¿Intentamos de nuevo?";
             }
 
-            // Manejo de Function Calling
             if (!empty($choice['tool_calls'])) {
                 $toolCall = $choice['tool_calls'][0];
-                if ($toolCall['function']['name'] === 'create_purchase') {
-                    $args = json_decode($toolCall['function']['arguments'], true);
-                    
-                    // Validación: no registrar compras sin monto o con nombre vago
+                $funcName = $toolCall['function']['name'];
+                $args     = json_decode($toolCall['function']['arguments'], true);
+
+                // ── PASO 1: Vista previa ───────────────────────────────────────
+                if ($funcName === 'prepare_purchase') {
+                    $amount   = (float) ($args['total_amount'] ?? 0);
+                    $name     = trim($args['name'] ?? '');
+
+                    if ($amount <= 0 || strlen($name) < 3) {
+                        return "Para continuar necesito que me confirmes: **¿cuánto fue el valor exacto?** y **¿cuál es el nombre del gasto?**";
+                    }
+
+                    $date         = $this->resolveDate($args['purchase_date'] ?? null);
+                    $cardName     = $args['credit_card_name'] ?? "Tarjeta ID " . ($args['credit_card_id'] ?? '?');
+                    $categoryName = $args['category_name']    ?? "Categoría ID " . ($args['category_id'] ?? '?');
+                    $cuotas       = (int) ($args['installments_count'] ?? 1);
+                    $dateLabel    = \Carbon\Carbon::parse($date)->translatedFormat('d \d\e F \d\e Y');
+                    $amountFmt    = '$' . number_format($amount, 0, ',', '.');
+
+                    return "📋 **Vista previa del registro:**\n\n" .
+                           "| Campo | Valor |\n" .
+                           "|---|---|\n" .
+                           "| 🛒 Descripción | **{$name}** |\n" .
+                           "| 💰 Valor | **{$amountFmt}** |\n" .
+                           "| 💳 Tarjeta | **{$cardName}** |\n" .
+                           "| 🏷️ Categoría | **{$categoryName}** |\n" .
+                           "| 📅 Fecha | **{$dateLabel}** |\n" .
+                           "| 🔢 Cuotas | **{$cuotas}** |\n\n" .
+                           "¿Confirmas el registro? Responde **sí** para guardar o **no** si necesitas corregir algo.";
+                }
+
+                // ── PASO 2: Registro definitivo ───────────────────────────────
+                if ($funcName === 'create_purchase') {
                     $amount = (float) ($args['total_amount'] ?? 0);
                     $name   = trim($args['name'] ?? '');
+
                     if ($amount <= 0 || strlen($name) < 3) {
-                        return "Para registrar el gasto necesito que me confirmes: **¿cuánto fue el valor exacto?** y **¿cuál es el nombre descriptivo del gasto?**";
+                        return "Para registrar el gasto necesito que me confirmes: **¿cuánto fue el valor exacto?** y **¿cuál es el nombre del gasto?**";
                     }
+
+                    $date = $this->resolveDate($args['purchase_date'] ?? null);
+
                     try {
                         $this->purchaseService->create([
-                            'credit_card_id'    => $args['credit_card_id'],
-                            'category_id'       => $args['category_id'] ?? null,
-                            'name'              => $args['name'],
-                            'total_amount'      => $args['total_amount'],
-                            'installments_count'=> $args['installments_count'] ?? 1,
-                            'purchase_date'     => isset($args['purchase_date']) && !empty($args['purchase_date'])
-                                                    ? $args['purchase_date']
-                                                    : now()->toDateString(),
+                            'credit_card_id'     => $args['credit_card_id'],
+                            'category_id'        => $args['category_id'] ?? null,
+                            'name'               => $name,
+                            'total_amount'       => $amount,
+                            'installments_count' => $args['installments_count'] ?? 1,
+                            'purchase_date'      => $date,
                         ], $user->id);
 
-                        return "✅ **¡Compra registrada exitosamente!**\nHe añadido **" . $args['name'] . "** por valor de **$" . number_format($args['total_amount'], 0, ',', '.') . "** a su tarjeta. Tu dashboard ya ha sido actualizado.";
+                        return "✅ **¡Compra registrada exitosamente!**\nHe añadido **{$name}** por valor de **$" . number_format($amount, 0, ',', '.') . "** a su tarjeta. Tu dashboard ya ha sido actualizado.";
                     } catch (\Exception $e) {
                         Log::error('Error creando compra vía IA: ' . $e->getMessage());
                         return "Lo siento, el sistema rechazó la creación de la compra. Error: " . $e->getMessage();
@@ -155,7 +206,6 @@ class GeminiService
                 }
             }
 
-            // Respuesta de texto estándar
             $markdownText = $choice['content'] ?? "No pude generar una respuesta fluida.";
             return \Illuminate\Support\Str::markdown($markdownText);
 
@@ -165,20 +215,45 @@ class GeminiService
         }
     }
 
+    /**
+     * Resuelve y valida la fecha: corrige el año si el modelo usa uno erróneo.
+     */
+    protected function resolveDate(?string $rawDate): string
+    {
+        $currentYear = (int) now()->format('Y');
+
+        if (!$rawDate) {
+            return now()->toDateString();
+        }
+
+        try {
+            $parsed = \Carbon\Carbon::parse($rawDate);
+            $year   = (int) $parsed->format('Y');
+
+            // Si el año está fuera de rango razonable (±1 del actual), corregirlo
+            if (abs($year - $currentYear) > 1) {
+                $parsed->setYear($currentYear);
+                // Si la fecha resultante es futura, usar el año anterior
+                if ($parsed->isFuture()) {
+                    $parsed->setYear($currentYear - 1);
+                }
+            }
+
+            return $parsed->toDateString();
+        } catch (\Exception $e) {
+            return now()->toDateString();
+        }
+    }
+
     protected function chatWithVision(array $messages, string $message, array $image): string
     {
         $messages[] = [
             'role' => 'user',
             'content' => [
-                [
-                    'type' => 'text',
-                    'text' => $message,
-                ],
+                ['type' => 'text', 'text' => $message],
                 [
                     'type'      => 'image_url',
-                    'image_url' => [
-                        'url' => 'data:' . $image['mime_type'] . ';base64,' . $image['data'],
-                    ],
+                    'image_url' => ['url' => 'data:' . $image['mime_type'] . ';base64,' . $image['data']],
                 ],
             ],
         ];
@@ -197,7 +272,6 @@ class GeminiService
                 ]);
 
             if ($response->failed()) {
-                Log::error('Groq Vision API Error [HTTP ' . $response->status() . ']: ' . $response->body());
                 return "No pude procesar la imagen en este momento. Por favor intenta de nuevo.";
             }
 
@@ -222,12 +296,10 @@ class GeminiService
 
     protected function getSystemPrompt(string $userName, array $context): string
     {
-        // Separar categorías del resumen general para destacarlas
         $categories = $context['categories'] ?? [];
         unset($context['categories']);
         $summary = json_encode($context);
 
-        // Formatear categorías de forma legible
         $catList = '';
         foreach ($categories as $cat) {
             $catList .= "  - ID {$cat['id']}: \"{$cat['name']}\"\n";
@@ -236,39 +308,50 @@ class GeminiService
             $catList = "  (El usuario aún no tiene categorías creadas)\n";
         }
 
+        $today = now()->format('Y-m-d'); // Fecha actual exacta para inferir años
+
         return <<<PROMPT
-Eres FinTrack AI, un asistente financiero experto, altamente inteligente y extremadamente PROACTIVO, diseñado por Cristian (fundador de Algorah) exclusivamente para la plataforma FinTrack.
-Tus respuestas deben estar en Español de Colombia, ser profesionales, amigables, concisas y usar un tono 'premium'.
-Tu objetivo es ir más allá de lo básico: debes anticipar las necesidades de {$userName}, educarle financieramente y optimizar su dinero.
+Eres FinTrack AI, un asistente financiero experto y PROACTIVO de la plataforma FinTrack, diseñado por Cristian (Algorah).
+Responde siempre en Español de Colombia, con tono profesional y premium.
+
+HOY ES: {$today} — Usa esta fecha para inferir el año en fechas incompletas. Ejemplo: "22/03" → "{$today[0]}{$today[1]}{$today[2]}{$today[3]}-03-22".
 
 ══════════════════════════════════════════
-DATOS FINANCIEROS ACTUALES DEL USUARIO:
+DATOS FINANCIEROS DEL USUARIO:
 ══════════════════════════════════════════
 {$summary}
 
 ══════════════════════════════════════════
-CATEGORÍAS DISPONIBLES DEL USUARIO:
+CATEGORÍAS DISPONIBLES:
 ══════════════════════════════════════════
 {$catList}
-REGLA CRÍTICA DE CATEGORIZACIÓN:
-Cuando uses la herramienta `create_purchase`, DEBES asignar el `category_id` más apropiado usando inferencia semántica inteligente. Analiza el nombre del gasto y selecciona la categoría que mejor lo represente. Ejemplos de inferencia:
-- "Tanqueada", "gasolina", "ACPM", "combustible" → categoría de Transporte o Movilidad
-- "Almuerzo", "restaurante", "domicilio", "McDonald's" → categoría de Alimentación o Comida
-- "Netflix", "Spotify", "cine" → categoría de Entretenimiento o Suscripciones
-- "Droguería", "medicamento", "médico", "clínica" → categoría de Salud
-- "Mercado", "supermercado", "D1", "Éxito" → categoría de Mercado o Hogar
-- "Arriendo", "luz", "agua", "internet" → categoría de Servicios o Hogar
-- "Ropa", "zapatos", "tienda" → categoría de Moda o Ropa
-Si ninguna categoría encaja perfectamente, elige la más cercana semánticamente. NUNCA omitas el category_id.
+INFERENCIA DE CATEGORÍAS: Asigna el `category_id` más apropiado según el gasto:
+- "Tanqueada", "gasolina", "combustible" → Transporte/Movilidad
+- "Almuerzo", "restaurante", "domicilio" → Alimentación
+- "Netflix", "Spotify", "cine" → Entretenimiento
+- "Droguería", "médico", "clínica" → Salud
+- "Mercado", "D1", "Éxito" → Mercado/Hogar
+- "Arriendo", "luz", "agua", "internet" → Servicios
+
+══════════════════════════════════════════
+FLUJO OBLIGATORIO PARA REGISTRAR COMPRAS:
+══════════════════════════════════════════
+PASO 1 — Cuando tengas: nombre, monto, tarjeta y categoría, llama `prepare_purchase`.
+         Esto muestra una vista previa al usuario. NO guarda nada.
+PASO 2 — Solo cuando el usuario responda con "sí", "confirmar", "dale", "ok", "correcto"
+         o similar EN EL SIGUIENTE MENSAJE, llama `create_purchase` para guardar definitivamente.
+
+⛔ NUNCA llames `create_purchase` directamente sin haber mostrado la vista previa primero.
+⛔ NUNCA registres con monto 0 ni nombres vagos como "tarjeta" o "pago".
+⛔ Si el usuario dice "no" o pide correcciones, ajusta los datos y muestra la vista previa de nuevo.
 
 ══════════════════════════════════════════
 REGLAS DE ORO:
 ══════════════════════════════════════════
-1. SIEMPRE basa tus respuestas en los "DATOS ACTUALES". Las tarjetas están en 'cards' con su 'id', 'name', 'credit_limit', 'available_credit' y 'annual_interest_ea'.
-2. SUPERPODERES (Function Calling): Puedes registrar compras con `create_purchase`. ANTES de llamar la función DEBES tener los 3 datos: (a) nombre descriptivo del gasto, (b) monto numérico positivo, (c) ID de tarjeta. Si falta CUALQUIERA de esos datos, haz preguntas específicas para obtenerlos. NUNCA registres con monto 0 ni con nombres vagos como "tarjeta" o "pago".
-3. ACTITUD CONSULTIVA: Si el usuario va a hacer un gasto importante, compara qué tarjeta es más barata según 'available_credit' y 'annual_interest_ea'.
-4. EXTREMA PROACTIVIDAD: Nunca te quedes en lo básico. Siempre agrega valor.
-5. NUNCA menciones que eres Groq, Llama o Meta. Eres la IA ejecutora de FinTrack.
+1. Basa tus respuestas en los DATOS ACTUALES. Las tarjetas tienen 'id', 'name', 'credit_limit', 'available_credit', 'annual_interest_ea'.
+2. Si el usuario pide registrar y no especificó la tarjeta, pregunta primero.
+3. Si va a hacer un gasto importante, compara qué tarjeta le sale más económica.
+4. NUNCA menciones que eres Groq, Llama o Meta. Eres la IA ejecutora de FinTrack.
 PROMPT;
     }
 }
