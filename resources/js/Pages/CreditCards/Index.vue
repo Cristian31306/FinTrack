@@ -58,44 +58,16 @@ const money = (val) => {
                     >
                         <!-- Physical Card Mockup -->
                         <PhysicalCard 
+                            :id="c.id"
                             :name="c.name"
                             :franchise="c.franchise"
                             :last4="c.last_4_digits || '0000'"
                             :color="c.color || '#4f46e5'"
+                            :credit-limit="c.credit_limit"
+                            :statement-day="c.statement_day"
+                            :payment-day="c.payment_day"
+                            @delete="destroy"
                         />
-
-                        <!-- Card Info & Actions -->
-                        <div class="mt-6 flex flex-col gap-4 rounded-3xl border border-white bg-white/40 p-6 shadow-premium backdrop-blur-sm transition-all group-hover:bg-white/60">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Cupo Total</p>
-                                    <p class="font-outfit text-xl font-black text-slate-900">{{ money(c.credit_limit) }}</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Cierre / Pago</p>
-                                    <p class="font-outfit text-sm font-bold text-slate-700">Día {{ c.statement_day }} / {{ c.payment_day }}</p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
-                                <Link
-                                    :href="route('credit-cards.edit', c.id)"
-                                    class="flex-1 inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200"
-                                >
-                                    Editar Info
-                                </Link>
-                                <button
-                                    type="button"
-                                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600 transition-all hover:bg-red-100"
-                                    @click="destroy(c.id)"
-                                    title="Eliminar Tarjeta"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

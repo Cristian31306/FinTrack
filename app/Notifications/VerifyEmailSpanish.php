@@ -16,7 +16,6 @@ class VerifyEmailSpanish extends VerifyEmail
      */
     public function toMail($notifiable)
     {
-        \Illuminate\Support\Facades\Log::debug('Enviando correo de verificación a: ' . $notifiable->getEmailForVerification());
         $verificationUrl = $this->verificationUrl($notifiable);
 
         return (new MailMessage)
