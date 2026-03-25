@@ -4,7 +4,23 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+
+const countries = [
+    { name: 'Colombia', code: '+57', flag: '🇨🇴' },
+    { name: 'Venezuela', code: '+58', flag: '🇻🇪' },
+    { name: 'Ecuador', code: '+593', flag: '🇪🇨' },
+    { name: 'Perú', code: '+51', flag: '🇵🇪' },
+    { name: 'Chile', code: '+56', flag: '🇨🇱' },
+    { name: 'Argentina', code: '+54', flag: '🇦🇷' },
+    { name: 'México', code: '+52', flag: '🇲🇽' },
+    { name: 'Estados Unidos', code: '+1', flag: '🇺🇸' },
+    { name: 'España', code: '+34', flag: '🇪🇸' },
+];
+
+const selectedCountry = ref(countries[0]);
+const localPhone = ref('');
 
 const form = useForm({
     name: '',
@@ -15,6 +31,9 @@ const form = useForm({
 });
 
 const submit = () => {
+    // Combinar código de país con el número local
+    form.phone_number = selectedCountry.value.code + localPhone.value.replace(/\s+/g, '');
+    
     form.post(route('register'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
@@ -79,17 +98,34 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel
                     for="phone_number"
-                    value="WhatsApp (Formato internacional: +57...)"
+                    value="WhatsApp"
                 />
 
-                <TextInput
-                    id="phone_number"
-                    v-model="form.phone_number"
-                    type="text"
-                    class="mt-1 block w-full border-slate-300"
-                    placeholder="+57300..."
-                    required
-                />
+                <div class="mt-1 flex gap-2">
+                    <div class="relative w-32 shrink-0">
+                        <select
+                            v-model="selectedCountry"
+                            class="block w-full rounded-md border-slate-300 py-2 pl-3 pr-10 text-sm focus:border-emerald-500 focus:ring-emerald-500"
+                        >
+                            <option
+                                v-for="c in countries"
+                                :key="c.code"
+                                :value="c"
+                            >
+                                {{ c.flag }} {{ c.code }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <TextInput
+                        id="phone_number"
+                        v-model="localPhone"
+                        type="text"
+                        class="block w-full border-slate-300"
+                        placeholder="Número de celular"
+                        required
+                    />
+                </div>
 
                 <InputError
                     class="mt-2"
