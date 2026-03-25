@@ -37,6 +37,22 @@ class AiAssistantService
 
     private const CACHE_TTL_MINUTES = 10;
 
+    private const ALLOWED_TOPICS_KEYWORDS = [
+        'gasto', 'compra', 'pago', 'deuda', 'tarjeta', 'cupo', 'saldo',
+        'categoría', 'responsable', 'corte', 'cuota', 'abono', 'banco',
+        'presupuesto', 'ahorro', 'finanza', 'dinero', 'factura', 'recibo',
+        'registrar', 'borrar', 'editar', 'crear', 'eliminar', 'listar',
+        'historial', 'resumen', 'reporte', 'mes', 'fecha', 'interés',
+        'hola', 'ayuda', 'qué puedes', 'cómo funciona', 'gracias',
+    ];
+
+    private const OFF_TOPIC_PATTERNS = [
+        'depresi', 'ansiedad', 'suicid', 'psicólog', 'terapis', 'autolesion',
+        'elecciones', 'partido político', 'dios', 'religión',
+        'receta', 'cocina', 'película', 'canción', 'juego', 'deporte',
+        'código en python', 'escríbeme un programa', 'dame un script',
+    ];
+
     public function __construct(
         protected PurchaseService    $purchaseService,
         protected DebtSummaryService $summaryService,
@@ -79,6 +95,12 @@ class AiAssistantService
             $this->clearAllPendingCaches($user);
             return "Entendido, he cancelado la operación pendiente. ¿En qué más puedo ayudarte?";
         }
+
+        // ── NUEVO: filtro off-topic ──────────────────────────────────────────────
+        if (!$image && $this->isOffTopic($message)) {
+            return $this->offTopicResponse($isWhatsApp);
+        }
+        // ────────────────────────────────────────────────────────────────────────
 
         $context      = $this->buildUserContext($user);
         $systemPrompt = $this->buildSystemPrompt($user->name, $context);
@@ -614,9 +636,12 @@ class AiAssistantService
     private function buildSystemPrompt(string $userName, array $context): string
     {
         $contextJson = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        
+        $now = now()->timezone('America/Bogota')->translatedFormat('l, j \d\e F \d\e Y, g:i a');
+
         return <<<PROMPT
 Eres FinTrack AI, el asistente personal de finanzas de {$userName}. 
+Hoy es {$now} (Hora de Colombia).
+
 Tu objetivo es ayudar a gestionar su dinero de forma inteligente y proactiva.
 
 REGLAS DE ORO:
@@ -632,6 +657,12 @@ REGLAS DE ORO:
    - IMPORTANTE: No muestres detalles técnicos al usuario como nombres de iconos (PascalCase) o códigos de colores hexadecimales. 
    - En su lugar, usa emojis representativos en tus mensajes para que el chat se vea bien.
    - **DATOS REQUERIDOS**: Si el usuario quiere crear algo (tarjeta, categoría, responsable) pero no ha dado los detalles (nombre, cupo, etc.), **NO inventes valores**. Pregúntale amablemente por los datos faltantes antes de llamar a 'prepare_...'. NO uses nombres genéricos como "Tarjeta de Crédito" o montos de "1.000.000" si no te los han dado.
+6. ALCANCE: Eres un asistente EXCLUSIVO de finanzas personales para la app FinTrack.
+   - Si el usuario pregunta algo fuera de ese ámbito (salud mental, política, cocina, programación general, entretenimiento), 
+     DECLÍNALO amablemente y redirige: "Soy FinTrack AI, especializado en finanzas. ¿Puedo ayudarte con algún gasto, tarjeta o deuda?"
+   - Esto incluye: no actúes como psicólogo, médico, abogado, ni asistente general.
+   - Sí puedes responder preguntas generales sobre finanzas personales (qué es el interés EA, cómo funciona una tarjeta de crédito), 
+     porque son educativas y relevantes para el contexto del usuario.
 
 No inventes datos. Si no ves la información en el contexto, pide aclaración.
 PROMPT;
@@ -671,5 +702,32 @@ PROMPT;
     private function formatForWhatsApp(string $text): string
     {
         return strip_tags(preg_replace('/\*\*(.*?)\*\*/s', '*$1*', $text));
+    }
+
+    private function isOffTopic(string $message): bool
+    {
+        $lower = mb_strtolower($message);
+
+        foreach (self::OFF_TOPIC_PATTERNS as $pattern) {
+            if (str_contains($lower, $pattern)) return true;
+        }
+
+        $words = preg_split('/\s+/u', $lower, -1, PREG_SPLIT_NO_EMPTY);
+        if (count($words) > 8) {
+            foreach (self::ALLOWED_TOPICS_KEYWORDS as $kw) {
+                if (str_contains($lower, $kw)) return false;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private function offTopicResponse(bool $isWhatsApp): string
+    {
+        $msg = "Soy FinTrack AI y estoy especializado en ayudarte con tus finanzas personales 💳\n"
+             . "Puedo registrar gastos, consultar deudas, gestionar tarjetas y más.\n"
+             . "¿Hay algo financiero en lo que te pueda ayudar?";
+        return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
     }
 }
