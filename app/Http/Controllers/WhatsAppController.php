@@ -30,7 +30,16 @@ class WhatsAppController extends Controller
 
         if (!$user) {
             Log::warning("[WhatsApp Webhook] Usuario no encontrado para el número: $from");
-            return response("<Response><Message>Lo siento, no reconozco este número en FinTrack. Por favor, asegúrate de registrarlo en tu perfil.</Message></Response>", 200)
+            $msg = "¡Hola! 🚀 Soy FinTrack AI, tu nuevo asistente financiero inteligente.\n\n" .
+                   "Veo que aún no estás registrado. Conmigo puedes:\n" .
+                   "✅ Registrar gastos solo con un mensaje o foto.\n" .
+                   "💳 Controlar tus tarjetas de crédito y fechas de corte.\n" .
+                   "📊 Ver resúmenes de tus deudas y categorías.\n" .
+                   "💡 Recibir consejos para mejorar tus finanzas.\n\n" .
+                   "Para empezar, regístrate aquí: https://fintrack.algorah.bond/register\n\n" .
+                   "¡Te espero para empezar a ahorrar juntos! 📈";
+            
+            return response("<Response><Message>" . htmlspecialchars($msg) . "</Message></Response>", 200)
                 ->header('Content-Type', 'text/xml');
         }
 

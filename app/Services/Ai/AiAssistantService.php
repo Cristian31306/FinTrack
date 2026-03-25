@@ -168,6 +168,15 @@ class AiAssistantService
                     'delete_category'         => $this->handleExecuteDeleteCategory($user, $isWhatsApp),
                     'prepare_delete_responsible' => $this->handlePrepareDeleteResponsible($args, $user, $context, $isWhatsApp),
                     'delete_responsible'         => $this->handleExecuteDeleteResponsible($user, $isWhatsApp),
+                    
+                    'prepare_edit_card'   => $this->handlePrepareEditCard($args, $user, $isWhatsApp),
+                    'edit_card'           => $this->handleExecuteEditCard($user, $isWhatsApp),
+                    'prepare_delete_card'   => $this->handlePrepareDeleteCard($args, $user, $isWhatsApp),
+                    'delete_card'           => $this->handleExecuteDeleteCard($user, $isWhatsApp),
+                    'prepare_edit_category'   => $this->handlePrepareEditCategory($args, $user, $isWhatsApp),
+                    'edit_category'           => $this->handleExecuteEditCategory($user, $isWhatsApp),
+                    'prepare_edit_responsible'   => $this->handlePrepareEditResponsible($args, $user, $isWhatsApp),
+                    'edit_responsible'           => $this->handleExecuteEditResponsible($user, $isWhatsApp),
                     default               => "Función desconocida: {$funcName}.",
                 };
             }
@@ -207,12 +216,16 @@ class AiAssistantService
         $pending = Cache::get($this->cacheKey($user));
         if (!$pending) return "❌ La sesión expiró.";
         try {
-            $purchase = $this->purchaseService->create($pending, $user->id);
+            $responsibles = $pending['responsibles'] ?? null;
+            $purchase = $this->purchaseService->create($pending, $user->id, $responsibles);
             Cache::forget($this->cacheKey($user));
             $valor = '$' . number_format($purchase->total_amount, 0, ',', '.');
             $msg = "✅ **Gasto registrado: {$purchase->name} por {$valor}.**";
             return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
-        } catch (\Exception $e) { return "❌ Error al guardar."; }
+        } catch (\Exception $e) { 
+            Log::error("[AI Execute] Error: " . $e->getMessage());
+            return "❌ Error al guardar."; 
+        }
     }
 
     private function handlePrepareCategory(array $args, User $user, bool $isWhatsApp)
@@ -306,7 +319,7 @@ class AiAssistantService
     private function handlePrepareCard(array $args, User $user, bool $isWhatsApp)
     {
         Cache::put("fintrack_pending_card_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        $text = "💳 **Crear tarjeta: {$args['name']}**\n¿Confirmas?";
+        $text = "💳 **Crear tarjeta: {$args['name']}**\n- Franquicia: {$args['franchise']}\n- Cupo: {$args['credit_limit']}\n¿Confirmas?";
         if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, crear', '❌ Cancelar']];
         return $text;
     }
@@ -316,10 +329,18 @@ class AiAssistantService
         $pending = Cache::get("fintrack_pending_card_{$user->id}");
         if (!$pending) return "❌ Expiró.";
         try {
-            CreditCard::create(array_merge($pending, ['user_id' => $user->id]));
+            // Mapear campos AI a campos DB si es necesario
+            $data = array_merge($pending, [
+                'user_id' => $user->id,
+                'annual_interest_ea' => $pending['interest_rate'] ?? 0,
+            ]);
+            CreditCard::create($data);
             Cache::forget("fintrack_pending_card_{$user->id}");
             return "✅ Tarjeta creada.";
-        } catch (\Exception $e) { return "❌ Error."; }
+        } catch (\Exception $e) { 
+            Log::error("[AI Card] Error: " . $e->getMessage());
+            return "❌ Error."; 
+        }
     }
 
     private function handlePrepareEditPurchase(array $args, User $user, array $context, bool $isWhatsApp)
@@ -408,6 +429,95 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
+    private function handlePrepareEditCard(array $args, User $user, bool $isWhatsApp)
+    {
+        $card = CreditCard::where('user_id', $user->id)->find($args['card_id']);
+        if (!$card) return "No encontrada.";
+        Cache::put("fintrack_pending_edit_card_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
+        $text = "✏️ **Editar tarjeta '{$card->name}'**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, editar', '❌ Cancelar']];
+        return $text;
+    }
+
+    private function handleExecuteEditCard(User $user, bool $isWhatsApp): string
+    {
+        $pending = Cache::get("fintrack_pending_edit_card_{$user->id}");
+        if (!$pending) return "❌ Expiró.";
+        try {
+            $card = CreditCard::where('user_id', $user->id)->findOrFail($pending['card_id']);
+            if (isset($pending['interest_rate'])) $pending['annual_interest_ea'] = $pending['interest_rate'];
+            $card->update($pending);
+            Cache::forget("fintrack_pending_edit_card_{$user->id}");
+            return "✅ Tarjeta actualizada.";
+        } catch (\Exception $e) { return "❌ Error."; }
+    }
+
+    private function handlePrepareDeleteCard(array $args, User $user, bool $isWhatsApp)
+    {
+        $card = CreditCard::where('user_id', $user->id)->find($args['card_id']);
+        if (!$card) return "No encontrada.";
+        Cache::put("fintrack_pending_delete_card_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
+        $text = "🗑️ **¿Eliminar tarjeta '{$card->name}'?**\nSe borrarán todos sus gastos asociados.";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['🔥 Sí, borrar todo', '❌ Cancelar']];
+        return $text;
+    }
+
+    private function handleExecuteDeleteCard(User $user, bool $isWhatsApp): string
+    {
+        $pending = Cache::get("fintrack_pending_delete_card_{$user->id}");
+        if (!$pending) return "❌ Expiró.";
+        try {
+            $card = CreditCard::where('user_id', $user->id)->findOrFail($pending['card_id']);
+            $card->delete();
+            Cache::forget("fintrack_pending_delete_card_{$user->id}");
+            return "🗑️ Tarjeta eliminada.";
+        } catch (\Exception $e) { return "❌ Error."; }
+    }
+
+    private function handlePrepareEditCategory(array $args, User $user, bool $isWhatsApp)
+    {
+        $cat = Category::where('user_id', $user->id)->find($args['category_id']);
+        if (!$cat) return "No encontrada.";
+        Cache::put("fintrack_pending_edit_category_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
+        $text = "✏️ **Editar categoría '{$cat->name}'**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, editar', '❌ Cancelar']];
+        return $text;
+    }
+
+    private function handleExecuteEditCategory(User $user, bool $isWhatsApp): string
+    {
+        $pending = Cache::get("fintrack_pending_edit_category_{$user->id}");
+        if (!$pending) return "❌ Expiró.";
+        try {
+            $cat = Category::where('user_id', $user->id)->findOrFail($pending['category_id']);
+            $cat->update($pending);
+            Cache::forget("fintrack_pending_edit_category_{$user->id}");
+            return "✅ Categoría actualizada.";
+        } catch (\Exception $e) { return "❌ Error."; }
+    }
+
+    private function handlePrepareEditResponsible(array $args, User $user, bool $isWhatsApp)
+    {
+        $resp = ResponsiblePerson::where('user_id', $user->id)->find($args['responsible_id']);
+        if (!$resp) return "No encontrado.";
+        Cache::put("fintrack_pending_edit_responsible_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
+        $text = "✏️ **Editar responsable '{$resp->name}'**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, editar', '❌ Cancelar']];
+        return $text;
+    }
+
+    private function handleExecuteEditResponsible(User $user, bool $isWhatsApp): string
+    {
+        $pending = Cache::get("fintrack_pending_edit_responsible_{$user->id}");
+        if (!$pending) return "❌ Expiró.";
+        try {
+            $resp = ResponsiblePerson::where('user_id', $user->id)->findOrFail($pending['responsible_id']);
+            $resp->update($pending);
+            Cache::forget("fintrack_pending_edit_responsible_{$user->id}");
+            return "✅ Responsable actualizado.";
+        } catch (\Exception $e) { return "❌ Error."; }
+    }
+
     private function resolveCategory(array $args, array $context): array
     {
         $catId = (int) ($args['category_id'] ?? 0);
@@ -438,7 +548,13 @@ class AiAssistantService
     {
         $dateLabel = Carbon::parse($args['purchase_date'])->locale('es')->translatedFormat('j \d\e F \d\e Y');
         $amountFmt = '$' . number_format($amount, 0, ',', '.');
-        if ($isWhatsApp) return "📋 *Vista previa:*\n🛒 {$args['name']}\n💰 {$amountFmt}\n💳 {$args['credit_card_name']}\n📅 {$dateLabel}\n¿Confirmas?";
+        
+        $responsiblesText = "";
+        if (!empty($args['responsibles'])) {
+            $responsiblesText = "\n👥 *Responsables:* " . count($args['responsibles']);
+        }
+
+        if ($isWhatsApp) return "📋 *Vista previa:*\n🛒 {$args['name']}\n💰 {$amountFmt}\n💳 {$args['credit_card_name']}\n📅 {$dateLabel}{$responsiblesText}\n¿Confirmas?";
         return "📋 **Vista previa:**\n- Gasto: {$args['name']}\n- Valor: {$amountFmt}\n¿Confirmas?";
     }
 
@@ -457,22 +573,28 @@ class AiAssistantService
     private function getToolsDefinition(): array
     {
         return [
-            ['type' => 'function', 'function' => ['name' => 'prepare_purchase', 'description' => 'Paso 1: Prepara un gasto.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'credit_card_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'installments_count' => ['type' => 'integer'], 'purchase_date' => ['type' => 'string'], 'confidence' => ['type' => 'string', 'enum' => ['high', 'low']]], 'required' => ['name', 'total_amount', 'credit_card_id', 'category_id', 'confidence']]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_purchase', 'description' => 'Paso 1: Prepara un gasto.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'credit_card_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'installments_count' => ['type' => 'integer'], 'purchase_date' => ['type' => 'string'], 'responsibles' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'percentage' => ['type' => 'number'], 'amount' => ['type' => 'number']]]], 'confidence' => ['type' => 'string', 'enum' => ['high', 'low']]], 'required' => ['name', 'total_amount', 'credit_card_id', 'category_id', 'confidence']]]],
             ['type' => 'function', 'function' => ['name' => 'create_purchase', 'description' => 'Paso 2: Guarda el gasto.', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_category', 'description' => 'Prepara una nueva categoría. El icono debe ser un nombre de Lucide Icon en PascalCase (ej: Utensils, ShoppingBag, Car, Zap, Home). No uses emojis en el nombre.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string', 'description' => 'Nombre limpio, sin emojis.'], 'icon' => ['type' => 'string', 'description' => 'Nombre del icono en PascalCase.'], 'color' => ['type' => 'string', 'description' => 'Color hexadecimal.']], 'required' => ['name', 'icon', 'color']]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_category', 'description' => 'Prepara una nueva categoría.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'icon' => ['type' => 'string', 'description' => 'Nombre Lucide en PascalCase (ej: Utensils, ShoppingBag)'], 'color' => ['type' => 'string']], 'required' => ['name', 'icon', 'color']]]],
             ['type' => 'function', 'function' => ['name' => 'create_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
             ['type' => 'function', 'function' => ['name' => 'prepare_responsible', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['name']]]],
             ['type' => 'function', 'function' => ['name' => 'create_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_payment', 'parameters' => ['type' => 'object', 'properties' => ['cut_id' => ['type' => 'integer'], 'amount' => ['type' => 'number'], 'card_name' => ['type' => 'string']], 'required' => ['card_name']]]],
-            ['type' => 'function', 'function' => ['name' => 'create_payment', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_card', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'franchise' => ['type' => 'string'], 'credit_limit' => ['type' => 'number'], 'statement_day' => ['type' => 'integer'], 'payment_day' => ['type' => 'integer']], 'required' => ['name', 'credit_limit', 'statement_day', 'payment_day']]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_card', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'franchise' => ['type' => 'string', 'enum' => ['Visa', 'Mastercard', 'American Express', 'Diners Club', 'Otro']], 'last_4_digits' => ['type' => 'string'], 'color' => ['type' => 'string', 'description' => 'Hexadecimal'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number', 'description' => 'EA %'], 'statement_day' => ['type' => 'integer'], 'payment_day' => ['type' => 'integer']], 'required' => ['name', 'franchise', 'credit_limit', 'statement_day', 'payment_day']]]],
             ['type' => 'function', 'function' => ['name' => 'create_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_edit_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'total_amount' => ['type' => 'number']], 'required' => ['purchase_id']]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_edit_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number']], 'required' => ['card_id']]]],
+            ['type' => 'function', 'function' => ['name' => 'edit_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_delete_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer']], 'required' => ['card_id']]]],
+            ['type' => 'function', 'function' => ['name' => 'delete_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_edit_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'category_id' => ['type' => 'integer']], 'required' => ['purchase_id']]]],
             ['type' => 'function', 'function' => ['name' => 'edit_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
             ['type' => 'function', 'function' => ['name' => 'prepare_delete_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer']], 'required' => ['purchase_id']]]],
             ['type' => 'function', 'function' => ['name' => 'delete_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_edit_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'icon' => ['type' => 'string'], 'color' => ['type' => 'string']], 'required' => ['category_id']]]],
+            ['type' => 'function', 'function' => ['name' => 'edit_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
             ['type' => 'function', 'function' => ['name' => 'prepare_delete_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer']], 'required' => ['category_id']]]],
             ['type' => 'function', 'function' => ['name' => 'delete_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
+            ['type' => 'function', 'function' => ['name' => 'prepare_edit_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['responsible_id']]]],
+            ['type' => 'function', 'function' => ['name' => 'edit_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
             ['type' => 'function', 'function' => ['name' => 'prepare_delete_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer']], 'required' => ['responsible_id']]]],
             ['type' => 'function', 'function' => ['name' => 'delete_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
         ];
