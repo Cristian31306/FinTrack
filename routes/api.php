@@ -5,7 +5,6 @@ use App\Models\CreditCard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('/usuario', function (Request $request) {
