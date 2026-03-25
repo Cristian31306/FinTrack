@@ -45,7 +45,7 @@ class WhatsAppController extends Controller
             }
 
             // 3. Obtener respuesta de la IA
-            $response = $aiService->chat($user, $body ?? '', [], $image);
+            $response = $aiService->chat($user, $body ?? '', [], $image, true);
 
             Log::info('[WhatsApp Webhook] Respondiendo con TwiML');
 

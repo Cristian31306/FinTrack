@@ -10,13 +10,13 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     protected Client $twilio;
-    protected string $from;
+    protected ?string $from = null;
 
     public function __construct()
     {
-        $sid   = config('services.twilio.sid');
-        $token = config('services.twilio.token');
-        $this->from = config('services.twilio.from');
+        $sid   = config('services.twilio.sid', env('TWILIO_SID', ''));
+        $token = config('services.twilio.token', env('TWILIO_TOKEN', ''));
+        $this->from = config('services.twilio.from', env('TWILIO_WHATSAPP_FROM', ''));
 
         // Configuración para entornos locales (Windows suele fallar con SSL)
         $httpClient = null;
