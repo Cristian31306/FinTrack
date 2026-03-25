@@ -25,6 +25,10 @@ class AiAssistantService
     protected string $textModel   = 'llama-3.3-70b-versatile';
     protected string $visionModel = 'llama-3.2-11b-vision-preview';
 
+    private const REJECT_TRIGGERS = [
+        'no', 'nopes', 'cancelar', 'nada', 'ninguno', 'borra', 'olvídalo', 'incorrecto',
+    ];
+
     private const CONFIRM_TRIGGERS = [
         'si', 'sí', 'dale', 'ok', 'okay', 'confirmado', 'confirmo',
         'registrar', 'procede', 'págalo', 'hágale', 'adelante',
@@ -39,8 +43,43 @@ class AiAssistantService
         protected CutService         $cutService,
     ) {}
 
-    public function chat(User $user, string $message, array $history = [], ?array $image = null, bool $isWhatsApp = false): string
+    private function isRejectionMessage(string $message): bool
     {
+        $lower = mb_strtolower(trim($message));
+        if (str_word_count($lower) <= 3) {
+            foreach (self::REJECT_TRIGGERS as $trigger) {
+                if (str_contains($lower, $trigger)) return true;
+            }
+        }
+        return false;
+    }
+
+    private function clearAllPendingCaches(User $user): void
+    {
+        $keys = [
+            $this->cacheKey($user),
+            "fintrack_pending_category_{$user->id}",
+            "fintrack_pending_responsible_{$user->id}",
+            "fintrack_pending_payment_{$user->id}",
+            "fintrack_pending_card_{$user->id}",
+            "fintrack_pending_edit_purchase_{$user->id}",
+            "fintrack_pending_delete_purchase_{$user->id}",
+            "fintrack_pending_delete_category_{$user->id}",
+            "fintrack_pending_delete_responsible_{$user->id}",
+        ];
+        foreach ($keys as $key) Cache::forget($key);
+    }
+
+    /**
+     * @return array|string
+     */
+    public function chat(User $user, string $message, array $history = [], ?array $image = null, bool $isWhatsApp = false)
+    {
+        if ($this->isRejectionMessage($message)) {
+            $this->clearAllPendingCaches($user);
+            return "Entendido, he cancelado la operación pendiente. ¿En qué más puedo ayudarte?";
+        }
+
         $context      = $this->buildUserContext($user);
         $systemPrompt = $this->buildSystemPrompt($user->name, $context);
 
@@ -56,7 +95,7 @@ class AiAssistantService
         return $this->callGroq($messages, $user, $context, $message, $isWhatsApp);
     }
 
-    private function callGroq(array $messages, User $user, array $context, string $rawMessage, bool $isWhatsApp): string
+    private function callGroq(array $messages, User $user, array $context, string $rawMessage, bool $isWhatsApp)
     {
         $isConfirm = $this->isConfirmationMessage($rawMessage);
         $toolChoice = 'auto';
@@ -99,7 +138,7 @@ class AiAssistantService
 
             if ($response->failed()) {
                 Log::error('[FinTrack AI] Groq HTTP error', ['status' => $response->status(), 'body' => $response->body()]);
-                return "Lo siento, tuve un problema de comunicación (código {$response->status()}).";
+                return "Lo siento, tuve un problema de comunicación.";
             }
 
             $choice = $response->json('choices.0.message');
@@ -133,7 +172,7 @@ class AiAssistantService
                 };
             }
 
-            $respText = $choice['content'] ?? "Entendido, ¿en qué más te puedo ayudar?";
+            $respText = $choice['content'] ?? "Entendido.";
             return $isWhatsApp ? $this->formatForWhatsApp($respText) : Str::markdown($respText);
 
         } catch (\Exception $e) {
@@ -142,7 +181,7 @@ class AiAssistantService
         }
     }
 
-    private function handlePrepare(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePrepare(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $name   = trim($args['name'] ?? '');
         $amount = (float) ($args['total_amount'] ?? 0);
@@ -155,33 +194,33 @@ class AiAssistantService
         $args['purchase_date'] = $this->resolveDate($args['purchase_date'] ?? null);
 
         Cache::put($this->cacheKey($user), $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        return $this->buildPreviewMarkdown($args, $amount, $isWhatsApp);
+        $preview = $this->buildPreviewMarkdown($args, $amount, $isWhatsApp);
+
+        if ($isWhatsApp) {
+            return ['text' => $preview, 'buttons' => ['✅ Sí, registrar', '❌ No, cancelar']];
+        }
+        return $preview;
     }
 
     private function handleExecute(User $user, bool $isWhatsApp): string
     {
         $pending = Cache::get($this->cacheKey($user));
         if (!$pending) return "❌ La sesión expiró.";
-
         try {
             $purchase = $this->purchaseService->create($pending, $user->id);
             Cache::forget($this->cacheKey($user));
             $valor = '$' . number_format($purchase->total_amount, 0, ',', '.');
             $msg = "✅ **Gasto registrado: {$purchase->name} por {$valor}.**";
             return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
-        } catch (\Exception $e) {
-            Log::error('[FinTrack AI] Error save purchase', ['error' => $e->getMessage()]);
-            return "❌ Error al guardar.";
-        }
+        } catch (\Exception $e) { return "❌ Error al guardar."; }
     }
 
-    private function handlePrepareCategory(array $args, User $user, bool $isWhatsApp): string
+    private function handlePrepareCategory(array $args, User $user, bool $isWhatsApp)
     {
-        $name = trim($args['name'] ?? '');
-        if (strlen($name) < 2) return "Nombre de categoría inválido.";
         Cache::put("fintrack_pending_category_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        $msg = "🛠️ **Vista previa de categoría: {$name}**\n¿Confirmas?";
-        return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
+        $text = "🛠️ **Crear categoría: {$args['name']}**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, crear', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteCategory(User $user, bool $isWhatsApp): string
@@ -195,12 +234,12 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareResponsible(array $args, User $user, bool $isWhatsApp): string
+    private function handlePrepareResponsible(array $args, User $user, bool $isWhatsApp)
     {
-        $name = trim($args['name'] ?? '');
         Cache::put("fintrack_pending_responsible_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        $msg = "👤 **Registrar responsable: {$name}**\n¿Confirmas?";
-        return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
+        $text = "👤 **Registrar responsable: {$args['name']}**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, registrar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteResponsible(User $user, bool $isWhatsApp): string
@@ -214,7 +253,7 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePreparePayment(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePreparePayment(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $cutId = (int) ($args['cut_id'] ?? 0);
         $amount = (float) ($args['amount'] ?? 0);
@@ -222,12 +261,19 @@ class AiAssistantService
 
         if ($cutId <= 0) {
             $cardName = $args['card_name'] ?? '';
-            $focusedCut = $upcomingCuts->filter(fn($c) => str_contains(strtolower($c->get('card_name', '')), strtolower($cardName)))->first();
+            $focusedCut = $upcomingCuts->filter(function($c) use ($cardName) {
+                $name = is_array($c) ? ($c['card_name'] ?? '') : ($c->card_name ?? '');
+                return str_contains(strtolower($name), strtolower($cardName));
+            })->first();
             if (!$focusedCut) return "No encontré corte para esa tarjeta.";
-            $cutId = (int) $focusedCut['cut_id'];
-            $amount = $amount ?: (float) $focusedCut['remaining'];
-            $args['card_name'] = $focusedCut['card_name'];
-            $args['period'] = CarbonImmutable::parse($focusedCut['period_end'])->translatedFormat('M Y');
+            
+            $cutId = (int) (is_array($focusedCut) ? $focusedCut['cut_id'] : $focusedCut->cut_id);
+            $remaining = (float) (is_array($focusedCut) ? $focusedCut['remaining'] : $focusedCut->remaining);
+            $periodEnd = is_array($focusedCut) ? $focusedCut['period_end'] : $focusedCut->period_end;
+            
+            $amount = $amount ?: $remaining;
+            $args['card_name'] = is_array($focusedCut) ? $focusedCut['card_name'] : $focusedCut->card_name;
+            $args['period'] = CarbonImmutable::parse($periodEnd)->translatedFormat('M Y');
         } else {
              $focusedCut = $upcomingCuts->firstWhere('cut_id', $cutId);
              if ($focusedCut) {
@@ -239,8 +285,9 @@ class AiAssistantService
         $args['amount'] = $amount;
         Cache::put("fintrack_pending_payment_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
         $val = '$' . number_format($amount, 0, ',', '.');
-        $msg = "💳 **Pago de {$val} en {$args['card_name']} ({$args['period']})**\n¿Confirmas?";
-        return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
+        $text = "💳 **Pago de {$val} en {$args['card_name']} ({$args['period']})**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, pagar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecutePayment(User $user, bool $isWhatsApp): string
@@ -256,11 +303,12 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareCard(array $args, User $user, bool $isWhatsApp): string
+    private function handlePrepareCard(array $args, User $user, bool $isWhatsApp)
     {
         Cache::put("fintrack_pending_card_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        $msg = "💳 **Crear tarjeta: {$args['name']}**\n¿Confirmas?";
-        return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
+        $text = "💳 **Crear tarjeta: {$args['name']}**\n¿Confirmas?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, crear', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteCard(User $user, bool $isWhatsApp): string
@@ -274,12 +322,14 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareEditPurchase(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePrepareEditPurchase(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $purchase = Purchase::where('user_id', $user->id)->find($args['purchase_id']);
         if (!$purchase) return "Gasto no encontrado.";
         Cache::put("fintrack_pending_edit_purchase_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        return "✏️ **Editar '{$purchase->name}'**\n¿Confirmas los cambios?";
+        $text = "✏️ **Editar '{$purchase->name}'**\n¿Confirmas los cambios?";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['✅ Sí, editar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteEditPurchase(User $user, bool $isWhatsApp): string
@@ -294,12 +344,14 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareDeletePurchase(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePrepareDeletePurchase(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $purchase = Purchase::where('user_id', $user->id)->find($args['purchase_id']);
         if (!$purchase) return "No encontrado.";
         Cache::put("fintrack_pending_delete_purchase_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        return "⚠️ **¿Eliminar '{$purchase->name}'?**";
+        $text = "⚠️ **¿Eliminar '{$purchase->name}'?**";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['🗑️ Sí, borrar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteDeletePurchase(User $user, bool $isWhatsApp): string
@@ -314,12 +366,14 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareDeleteCategory(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePrepareDeleteCategory(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $category = Category::where('user_id', $user->id)->find($args['category_id']);
         if (!$category) return "No encontrada.";
         Cache::put("fintrack_pending_delete_category_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        return "⚠️ **¿Eliminar categoría '{$category->name}'?**";
+        $text = "⚠️ **¿Eliminar categoría '{$category->name}'?**";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['🗑️ Sí, borrar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteDeleteCategory(User $user, bool $isWhatsApp): string
@@ -333,12 +387,14 @@ class AiAssistantService
         } catch (\Exception $e) { return "❌ Error."; }
     }
 
-    private function handlePrepareDeleteResponsible(array $args, User $user, array $context, bool $isWhatsApp): string
+    private function handlePrepareDeleteResponsible(array $args, User $user, array $context, bool $isWhatsApp)
     {
         $resp = ResponsiblePerson::where('user_id', $user->id)->find($args['responsible_id']);
         if (!$resp) return "No encontrado.";
         Cache::put("fintrack_pending_delete_responsible_{$user->id}", $args, now()->addMinutes(self::CACHE_TTL_MINUTES));
-        return "⚠️ **¿Eliminar responsable '{$resp->name}'?**";
+        $text = "⚠️ **¿Eliminar responsable '{$resp->name}'?**";
+        if ($isWhatsApp) return ['text' => $text, 'buttons' => ['🗑️ Sí, borrar', '❌ Cancelar']];
+        return $text;
     }
 
     private function handleExecuteDeleteResponsible(User $user, bool $isWhatsApp): string
@@ -436,7 +492,7 @@ class AiAssistantService
     private function buildSystemPrompt(string $userName, array $context): string
     {
         $contextJson = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        return "Eres FinTrack AI para {$userName}. Responde en Español (Colombia). USA EL FLUJO DE 2 PASOS (prepare -> confirm -> create/edit/delete). Datos: {$contextJson}";
+        return "Eres FinTrack AI para {$userName}. Responde en Español (Colombia). USA EL FLUJO DE 2 PASOS (prepare -> confirm -> create/edit/delete). Datos: {$contextJson}. IMPORTANTE: Si un usuario dice 'No' o desea cancelar, detente inmediatamente.";
     }
 
     private function chatWithVision(array $messages, string $message, array $image, bool $isWhatsApp): string

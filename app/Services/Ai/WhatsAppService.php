@@ -30,9 +30,6 @@ class WhatsAppService
         $this->twilio = new Client($sid, $token, null, null, $httpClient);
     }
 
-    /**
-     * Envía un mensaje de texto por WhatsApp.
-     */
     public function sendMessage(string $to, string $message): void
     {
         try {
@@ -42,6 +39,42 @@ class WhatsAppService
             ]);
         } catch (\Exception $e) {
             Log::error("[WhatsAppService] Error enviando mensaje: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envía botones interactivos por WhatsApp (Reply Buttons).
+     * Solo funciona si el usuario envió un mensaje en las últimas 24h.
+     */
+    public function sendButtons(string $to, string $body, array $buttons): void
+    {
+        try {
+            // WhatsApp permite máximo 3 botones de respuesta rápida
+            $buttonItems = [];
+            foreach (array_slice($buttons, 0, 3) as $btn) {
+                $buttonItems[] = [
+                    'type' => 'reply',
+                    'reply' => [
+                        'id'    => \Illuminate\Support\Str::slug($btn),
+                        'title' => $btn
+                    ]
+                ];
+            }
+
+            // Usamos el parámetro 'content' para enviar el JSON interactivo directamente
+            // Nota: Requiere que la cuenta de Twilio soporte este formato (Content API)
+            $this->twilio->messages->create($to, [
+                'from' => $this->from,
+                'content' => json_encode([
+                    'type'    => 'whatsapp/button',
+                    'body'    => ['text' => $body],
+                    'actions' => $buttonItems
+                ])
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("[WhatsAppService] Falló envío de botones (usando texto): " . $e->getMessage());
+            // Fallback a mensaje de texto si los botones fallan
+            $this->sendMessage($to, $body . "\n\nResponde: " . implode(" o ", $buttons));
         }
     }
 

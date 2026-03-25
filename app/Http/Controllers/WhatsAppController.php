@@ -47,10 +47,20 @@ class WhatsAppController extends Controller
             // 3. Obtener respuesta de la IA
             $response = $aiService->chat($user, $body ?? '', [], $image, true);
 
-            Log::info('[WhatsApp Webhook] Respondiendo con TwiML');
+            Log::info('[WhatsApp Webhook] Procesando respuesta', [
+                'has_buttons' => is_array($response) && isset($response['buttons'])
+            ]);
 
-            // 4. Devolver TwiML directamente
-            $xmlResponse = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>" . htmlspecialchars($response) . "</Message></Response>";
+            // 4. Si la respuesta trae botones, los enviamos vía API y retornamos TwiML vacío
+            if (is_array($response) && isset($response['buttons'])) {
+                $whatsappService->sendButtons($from, $response['text'], $response['buttons']);
+                return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", 200)
+                    ->header('Content-Type', 'text/xml');
+            }
+
+            // 5. Devolver TwiML estándar para mensajes de texto
+            $text = is_array($response) ? ($response['text'] ?? '') : $response;
+            $xmlResponse = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>" . htmlspecialchars($text) . "</Message></Response>";
             
             return response($xmlResponse, 200)
                 ->header('Content-Type', 'text/xml');
