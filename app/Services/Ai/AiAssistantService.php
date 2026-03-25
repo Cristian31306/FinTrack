@@ -286,12 +286,12 @@ class AiAssistantService
             
             $amount = $amount ?: $remaining;
             $args['card_name'] = is_array($focusedCut) ? $focusedCut['card_name'] : $focusedCut->card_name;
-            $args['period'] = CarbonImmutable::parse($periodEnd)->translatedFormat('M Y');
+            $args['period'] = Carbon::parse($periodEnd)->translatedFormat('M Y');
         } else {
              $focusedCut = $upcomingCuts->firstWhere('cut_id', $cutId);
              if ($focusedCut) {
                  $args['card_name'] = $focusedCut['card_name'];
-                 $args['period'] = CarbonImmutable::parse($focusedCut['period_end'])->translatedFormat('M Y');
+                 $args['period'] = Carbon::parse($focusedCut['period_end'])->translatedFormat('M Y');
              }
         }
         $args['cut_id'] = $cutId;
