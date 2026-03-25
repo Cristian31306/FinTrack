@@ -11,11 +11,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use App\Services\CategoryService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
+    public function __construct(
+        protected CategoryService $categoryService
+    ) {}
     /**
      * Display the registration view.
      */
@@ -44,6 +48,9 @@ class RegisteredUserController extends Controller
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
         ]);
+
+        // Sembrar categorías por defecto
+        $this->categoryService->seedDefaultCategories($user);
 
         // Enviar mensaje de bienvenida por WhatsApp
         try {
