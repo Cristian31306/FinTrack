@@ -39,6 +39,10 @@ return [
         'key' => env('GROQ_API_KEY'),
     ],
 
+    'gemini' => [
+        'key' => env('GOOGLE_AI_API_KEY'),
+    ],
+
     'twilio' => [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_TOKEN'),

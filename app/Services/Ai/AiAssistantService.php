@@ -21,9 +21,9 @@ use Illuminate\Support\Str;
 
 class AiAssistantService
 {
-    protected string $baseUrl     = 'https://api.groq.com/openai/v1/chat/completions';
-    protected string $textModel   = 'llama-3.3-70b-versatile';
-    protected string $visionModel = 'llama-3.2-11b-vision-preview';
+    protected string $baseUrl     = 'https://generativelanguage.googleapis.com/v1beta/';
+    protected string $textModel   = 'models/gemini-flash-latest';
+    protected string $visionModel = 'models/gemini-flash-latest';
 
     private const REJECT_TRIGGERS = [
         'no', 'nopes', 'cancelar', 'nada', 'ninguno', 'borra', 'olvídalo', 'incorrecto',
@@ -105,24 +105,39 @@ class AiAssistantService
         $context      = $this->buildUserContext($user);
         $systemPrompt = $this->buildSystemPrompt($user->name, $context);
 
-        $messages = [['role' => 'system', 'content' => $systemPrompt]];
-        $messages = array_merge($messages, $this->reconstructHistory($history));
+        $contents = $this->reconstructHistory($history);
 
         if ($image) {
-            $messages[] = ['role' => 'user', 'content' => $message];
-            return $this->chatWithVision($messages, $message, $image, $isWhatsApp);
+            $contents[] = [
+                'role'  => 'user',
+                'parts' => [
+                    ['text' => $message],
+                    [
+                        'inline_data' => [
+                            'mime_type' => $image['mime_type'],
+                            'data'      => $image['data']
+                        ]
+                    ]
+                ]
+            ];
+            return $this->callGemini($contents, $user, $context, $message, $isWhatsApp, $systemPrompt);
         }
 
-        $messages[] = ['role' => 'user', 'content' => $message];
-        return $this->callGroq($messages, $user, $context, $message, $isWhatsApp);
+        $contents[] = [
+            'role'  => 'user',
+            'parts' => [['text' => $message]]
+        ];
+
+        return $this->callGemini($contents, $user, $context, $message, $isWhatsApp, $systemPrompt);
     }
 
-    private function callGroq(array $messages, User $user, array $context, string $rawMessage, bool $isWhatsApp)
+    private function callGemini(array $contents, User $user, array $context, string $rawMessage, bool $isWhatsApp, string $systemPrompt)
     {
         $isConfirm = $this->isConfirmationMessage($rawMessage);
-        $toolChoice = 'auto';
+        $toolConfig = null;
 
         if ($isConfirm) {
+            $forcedFunction = null;
             $keyPurchase    = $this->cacheKey($user);
             $keyCategory    = "fintrack_pending_category_{$user->id}";
             $keyResponsible = "fintrack_pending_responsible_{$user->id}";
@@ -133,43 +148,87 @@ class AiAssistantService
             $keyDelCat      = "fintrack_pending_delete_category_{$user->id}";
             $keyDelResp     = "fintrack_pending_delete_responsible_{$user->id}";
 
-            if (Cache::has($keyPurchase))     $toolChoice = ['type' => 'function', 'function' => ['name' => 'create_purchase']];
-            elseif (Cache::has($keyCategory)) $toolChoice = ['type' => 'function', 'function' => ['name' => 'create_category']];
-            elseif (Cache::has($keyResponsible)) $toolChoice = ['type' => 'function', 'function' => ['name' => 'create_responsible']];
-            elseif (Cache::has($keyPayment))  $toolChoice = ['type' => 'function', 'function' => ['name' => 'create_payment']];
-            elseif (Cache::has($keyCard))     $toolChoice = ['type' => 'function', 'function' => ['name' => 'create_card']];
-            elseif (Cache::has($keyEditPurch)) $toolChoice = ['type' => 'function', 'function' => ['name' => 'edit_purchase']];
-            elseif (Cache::has($keyDelPurch)) $toolChoice = ['type' => 'function', 'function' => ['name' => 'delete_purchase']];
-            elseif (Cache::has($keyDelCat))   $toolChoice = ['type' => 'function', 'function' => ['name' => 'delete_category']];
-            elseif (Cache::has($keyDelResp))  $toolChoice = ['type' => 'function', 'function' => ['name' => 'delete_responsible']];
+            if (Cache::has($keyPurchase))     $forcedFunction = 'create_purchase';
+            elseif (Cache::has($keyCategory)) $forcedFunction = 'create_category';
+            elseif (Cache::has($keyResponsible)) $forcedFunction = 'create_responsible';
+            elseif (Cache::has($keyPayment))  $forcedFunction = 'create_payment';
+            elseif (Cache::has($keyCard))     $forcedFunction = 'create_card';
+            elseif (Cache::has($keyEditPurch)) $forcedFunction = 'edit_purchase';
+            elseif (Cache::has($keyDelPurch)) $forcedFunction = 'delete_purchase';
+            elseif (Cache::has($keyDelCat))   $forcedFunction = 'delete_category';
+            elseif (Cache::has($keyDelResp))  $forcedFunction = 'delete_responsible';
+
+            if ($forcedFunction) {
+                $toolConfig = [
+                    'function_calling_config' => [
+                        'mode' => 'ANY',
+                        'allowed_function_names' => [$forcedFunction]
+                    ]
+                ];
+            }
         }
 
         $payload = [
-            'model'       => $this->textModel,
-            'messages'    => $messages,
-            'tools'       => $this->getToolsDefinition(),
-            'tool_choice' => $toolChoice,
-            'temperature' => 0.3,
-            'max_tokens'  => 1024,
+            'contents' => $contents,
+            'system_instruction' => [
+                'parts' => [['text' => $systemPrompt]]
+            ],
+            'tools' => [
+                ['function_declarations' => $this->getToolsDefinition()]
+            ],
+            'generationConfig' => [
+                'temperature' => 0.3,
+                'maxOutputTokens' => 1024,
+            ],
+            'safetySettings' => [
+                ['category' => 'HARM_CATEGORY_HARASSMENT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_HATE_SPEECH', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_NONE'],
+            ]
         ];
+
+        if ($toolConfig) {
+            $payload['tool_config'] = $toolConfig;
+        }
+
+        $url = $this->baseUrl . $this->textModel . ':generateContent';
 
         try {
             $response = Http::withoutVerifying()
-                ->withHeaders(['Authorization' => 'Bearer ' . config('services.groq.key')])
-                ->post($this->baseUrl, $payload);
+                ->withHeaders(['X-goog-api-key' => config('services.gemini.key')])
+                ->post($url, $payload);
 
             if ($response->failed()) {
-                Log::error('[FinTrack AI] Groq HTTP error', ['status' => $response->status(), 'body' => $response->body()]);
-                return "Lo siento, tuve un problema de comunicación.";
+                Log::error('[FinTrack AI] Gemini Native error', ['status' => $response->status(), 'body' => $response->body(), 'payload' => $payload]);
+                return "Lo siento, tuve un problema de comunicación con Gemini (Native).";
             }
 
-            $choice = $response->json('choices.0.message');
-            if (empty($choice)) return "No obtuve una respuesta válida.";
+            $candidate = $response->json('candidates.0');
+            if (!$candidate) {
+                Log::error('[FinTrack AI] Gemini empty candidate', ['response' => $response->json()]);
+                return "No obtuve una respuesta válida de la IA.";
+            }
 
-            if (!empty($choice['tool_calls'])) {
-                $call     = $choice['tool_calls'][0];
-                $funcName = $call['function']['name'];
-                $args     = json_decode($call['function']['arguments'], true) ?? [];
+            $parts = $candidate['content']['parts'] ?? [];
+            if (empty($parts)) return "Respuesta sin partes.";
+
+            $funcCall = null;
+            $textParts = [];
+
+            foreach ($parts as $p) {
+                if (isset($p['function_call'])) {
+                    $funcCall = $p['function_call'];
+                    break;
+                }
+                if (isset($p['text'])) {
+                    $textParts[] = $p['text'];
+                }
+            }
+
+            if ($funcCall) {
+                $funcName = $funcCall['name'];
+                $args     = $funcCall['args'] ?? [];
 
                 return match ($funcName) {
                     'prepare_purchase'    => $this->handlePrepare($args, $user, $context, $isWhatsApp),
@@ -203,12 +262,12 @@ class AiAssistantService
                 };
             }
 
-            $respText = $choice['content'] ?? "Entendido.";
+            $respText = implode("\n", $textParts) ?: "Entendido.";
             return $isWhatsApp ? $this->formatForWhatsApp($respText) : Str::markdown($respText);
 
         } catch (\Exception $e) {
-            Log::error('[FinTrack AI] Excepción en callGroq', ['error' => $e->getMessage()]);
-            return "Ocurrió un error interno.";
+            Log::error('[FinTrack AI] Excepción en callGemini', ['error' => $e->getMessage()]);
+            return "Ocurrió un error interno al procesar con Gemini.";
         }
     }
 
@@ -582,44 +641,45 @@ class AiAssistantService
 
     private function reconstructHistory(array $history): array
     {
-        $messages = [];
+        $contents = [];
         foreach ($history as $msg) {
             $content = $msg['content'] ?? '';
-            $role = ($msg['role'] ?? 'bot') === 'bot' ? 'assistant' : 'user';
+            $role = ($msg['role'] ?? 'bot') === 'bot' ? 'model' : 'user';
             if (str_contains($content, '✅')) continue;
-            $messages[] = ['role' => $role, 'content' => $content];
+            $contents[] = ['role' => $role, 'parts' => [['text' => $content]]];
         }
-        return $messages;
+        return $contents;
     }
 
     private function getToolsDefinition(): array
     {
-        return [
-            ['type' => 'function', 'function' => ['name' => 'prepare_purchase', 'description' => 'Paso 1: Prepara un gasto.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'credit_card_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'installments_count' => ['type' => 'integer'], 'purchase_date' => ['type' => 'string'], 'responsibles' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'percentage' => ['type' => 'number'], 'amount' => ['type' => 'number']]]], 'confidence' => ['type' => 'string', 'enum' => ['high', 'low']]], 'required' => ['name', 'total_amount', 'credit_card_id', 'category_id', 'confidence']]]],
-            ['type' => 'function', 'function' => ['name' => 'create_purchase', 'description' => 'Paso 2: Guarda el gasto.', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_category', 'description' => 'Prepara una nueva categoría.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'icon' => ['type' => 'string', 'description' => 'Nombre Lucide en PascalCase (ej: Utensils, ShoppingBag)'], 'color' => ['type' => 'string']], 'required' => ['name', 'icon', 'color']]]],
-            ['type' => 'function', 'function' => ['name' => 'create_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_responsible', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['name']]]],
-            ['type' => 'function', 'function' => ['name' => 'create_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_card', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'franchise' => ['type' => 'string', 'enum' => ['Visa', 'Mastercard', 'American Express', 'Diners Club', 'Otro']], 'last_4_digits' => ['type' => 'string'], 'color' => ['type' => 'string', 'description' => 'Hexadecimal'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number', 'description' => 'EA %'], 'statement_day' => ['type' => 'integer'], 'payment_day' => ['type' => 'integer']], 'required' => ['name', 'franchise', 'credit_limit', 'statement_day', 'payment_day']]]],
-            ['type' => 'function', 'function' => ['name' => 'create_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_edit_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number']], 'required' => ['card_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'edit_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_delete_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer']], 'required' => ['card_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'delete_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_edit_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'category_id' => ['type' => 'integer']], 'required' => ['purchase_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'edit_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_delete_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer']], 'required' => ['purchase_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'delete_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_edit_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'icon' => ['type' => 'string'], 'color' => ['type' => 'string']], 'required' => ['category_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'edit_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_delete_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer']], 'required' => ['category_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'delete_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_edit_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['responsible_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'edit_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
-            ['type' => 'function', 'function' => ['name' => 'prepare_delete_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer']], 'required' => ['responsible_id']]]],
-            ['type' => 'function', 'function' => ['name' => 'delete_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]]],
+        $openaiTools = [
+            ['name' => 'prepare_purchase', 'description' => 'Paso 1: Prepara un gasto.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'credit_card_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'installments_count' => ['type' => 'integer'], 'purchase_date' => ['type' => 'string'], 'responsibles' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'percentage' => ['type' => 'number'], 'amount' => ['type' => 'number']]]], 'confidence' => ['type' => 'string', 'enum' => ['high', 'low']]], 'required' => ['name', 'total_amount', 'credit_card_id', 'category_id', 'confidence']]],
+            ['name' => 'create_purchase', 'description' => 'Paso 2: Guarda el gasto.', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_category', 'description' => 'Prepara una nueva categoría.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'icon' => ['type' => 'string', 'description' => 'Nombre Lucide en PascalCase (ej: Utensils, ShoppingBag)'], 'color' => ['type' => 'string']], 'required' => ['name', 'icon', 'color']]],
+            ['name' => 'create_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_responsible', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['name']]],
+            ['name' => 'create_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_card', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'franchise' => ['type' => 'string', 'enum' => ['Visa', 'Mastercard', 'American Express', 'Diners Club', 'Otro']], 'last_4_digits' => ['type' => 'string'], 'color' => ['type' => 'string', 'description' => 'Hexadecimal'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number', 'description' => 'EA %'], 'statement_day' => ['type' => 'integer'], 'payment_day' => ['type' => 'integer']], 'required' => ['name', 'franchise', 'credit_limit', 'statement_day', 'payment_day']]],
+            ['name' => 'create_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_edit_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number']], 'required' => ['card_id']]],
+            ['name' => 'edit_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_delete_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer']], 'required' => ['card_id']]],
+            ['name' => 'delete_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_edit_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'category_id' => ['type' => 'integer']], 'required' => ['purchase_id']]],
+            ['name' => 'edit_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_delete_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer']], 'required' => ['purchase_id']]],
+            ['name' => 'delete_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_edit_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'icon' => ['type' => 'string'], 'color' => ['type' => 'string']], 'required' => ['category_id']]],
+            ['name' => 'edit_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_delete_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer']], 'required' => ['category_id']]],
+            ['name' => 'delete_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_edit_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['responsible_id']]],
+            ['name' => 'edit_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'prepare_delete_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer']], 'required' => ['responsible_id']]],
+            ['name' => 'delete_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
         ];
+        return $openaiTools;
     }
 
     private function buildUserContext(User $user): array
@@ -668,16 +728,7 @@ No inventes datos. Si no ves la información en el contexto, pide aclaración.
 PROMPT;
     }
 
-    private function chatWithVision(array $messages, string $message, array $image, bool $isWhatsApp): string
-    {
-        array_pop($messages);
-        $messages[] = ['role' => 'user', 'content' => [['type' => 'text', 'text' => $message], ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $image['mime_type'] . ';base64,' . $image['data']]]]];
-        try {
-            $response = Http::withoutVerifying()->withHeaders(['Authorization' => 'Bearer ' . config('services.groq.key')])->post($this->baseUrl, ['model' => $this->visionModel, 'messages' => $messages, 'temperature' => 0.4]);
-            $msg = $response->json('choices.0.message.content') ?? "Error imagen.";
-            return $isWhatsApp ? $this->formatForWhatsApp($msg) : $msg;
-        } catch (\Exception $e) { return "Error visión."; }
-    }
+
 
     private function isConfirmationMessage(string $message): bool
     {
