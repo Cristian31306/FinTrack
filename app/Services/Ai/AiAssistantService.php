@@ -40,8 +40,8 @@ class AiAssistantService
     private const CACHE_TTL    = 10;   // minutos
     private const MAX_TOKENS   = 1024;
     private const TEMPERATURE  = 0.3;
-    private const HTTP_RETRIES = 3;
-    private const HTTP_RETRY_MS = 600;
+    private const HTTP_RETRIES = 5;
+    private const HTTP_RETRY_MS = 2000;
     private const RECENT_PURCHASES_LIMIT = 15;
     private const RECENT_PAYMENTS_LIMIT  = 10;
 
@@ -159,14 +159,20 @@ class AiAssistantService
         ?array  $toolConfig,
     ): string|array {
         $payload = $this->buildPayload($contents, $systemPrompt, $toolConfig);
-        $url     = self::BASE_URL . config('services.gemini.model') . ':generateContent';
+        $model   = config('services.gemini.model');
+        if (!str_starts_with($model, 'models/')) {
+            $model = 'models/' . $model;
+        }
+        $url     = self::BASE_URL . $model . ':generateContent';
+
 
         try {
             $response = Http::withoutVerifying()
                 ->retry(self::HTTP_RETRIES, self::HTTP_RETRY_MS)
                 ->withHeaders(['X-goog-api-key' => config('services.gemini.key')])
-                ->timeout(30)
+                ->timeout(60)
                 ->post($url, $payload);
+
 
             if ($response->failed()) {
                 Log::error('[FinTrack AI] Gemini HTTP error', [
