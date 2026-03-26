@@ -57,37 +57,45 @@ class WhatsAppService
     }
 
     /**
-     * Envía botones interactivos por WhatsApp (Reply Buttons).
-     * Solo funciona si el usuario envió un mensaje en las últimas 24h.
+     * Envía botones interactivos por WhatsApp (Reply Buttons - Máx 3).
      */
     public function sendButtons(string $to, string $text, array $buttons): void
     {
-        if (!isset($this->twilio))
-            return;
-
-        $contentSid = config('services.twilio.content_sid');
+        if (!isset($this->twilio)) return;
 
         try {
-            if ($contentSid) {
-                // Usar Content API de Twilio (si está configurada)
-                $this->twilio->messages->create($to, [
-                    'from' => $this->from,
-                    'contentSid' => $contentSid,
-                    'contentVariables' => json_encode(['1' => $text]),
-                ]);
-            }
-            else {
-                // Fallback a botones mediante interactive message simulado o texto
-                // En Twilio WhatsApp, las Reply Buttons suelen requerir Content SID.
-                // Si no hay, mandamos una lista de texto.
-                $this->twilio->messages->create($to, [
-                    'from' => $this->from,
-                    'body' => $text . "\n\nResponde con una de las opciones:\n- " . implode("\n- ", $buttons)
-                ]);
-            }
-        }
-        catch (\Throwable $e) {
+            // Logica para botones rápidos (Quick Replies)
+            // Si no hay Content SID, mandamos texto con formato
+            $this->twilio->messages->create($to, [
+                'from' => $this->from,
+                'body' => $text . "\n\n" . implode(" | ", array_map(fn($b) => "[$b]", $buttons))
+            ]);
+        } catch (\Throwable $e) {
             Log::error("[WhatsAppService] Error enviando botones: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envía una lista desplegable (List Message - Máx 10 opciones).
+     */
+    public function sendList(string $to, string $text, string $buttonText, array $options): void
+    {
+        if (!isset($this->twilio)) return;
+
+        try {
+            // Las listas interactivas reales requieren Content SID o la API de Meta directa.
+            // Para Twilio, si No hay Content SID, enviamos un menú numerado muy claro.
+            $numberedOptions = "";
+            foreach ($options as $index => $opt) {
+                $numberedOptions .= ($index + 1) . ". $opt\n";
+            }
+
+            $this->twilio->messages->create($to, [
+                'from' => $this->from,
+                'body' => "$text\n\n$numberedOptions\nResponde con el número o nombre de la opción."
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("[WhatsAppService] Error enviando lista: " . $e->getMessage());
         }
     }
 

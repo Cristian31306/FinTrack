@@ -61,13 +61,23 @@ class WhatsAppController extends Controller
                 $response = "No entendí ese comando. Escribe 'menu' para ver las opciones disponibles.";
             }
 
-            Log::info('[WhatsApp Webhook] Procesando respuesta bot', [
-                'has_buttons' => is_array($response) && isset($response['buttons'])
-            ]);
-
-            // 4. Si la respuesta trae botones, los enviamos vía API y retornamos TwiML vacío
-            if (is_array($response) && isset($response['buttons'])) {
-                $whatsappService->sendButtons($from, $response['text'], $response['buttons']);
+            // 4. Si la respuesta trae botones o lista, los enviamos vía API y retornamos TwiML vacío
+            if (is_array($response) && isset($response['type'])) {
+                if ($response['type'] === 'list') {
+                    $whatsappService->sendList(
+                        $from, 
+                        $response['text'], 
+                        $response['buttonText'] ?? 'Opciones', 
+                        $response['options']
+                    );
+                } elseif ($response['type'] === 'buttons') {
+                    $whatsappService->sendButtons(
+                        $from, 
+                        $response['text'], 
+                        $response['buttons']
+                    );
+                }
+                
                 return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", 200)
                     ->header('Content-Type', 'text/xml');
             }

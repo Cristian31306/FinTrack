@@ -58,16 +58,11 @@ class WhatsAppBotService
     {
         $this->setState($user, ['step' => 'idle']);
         
-        $text = "🏦 *Menú Principal FinTrack*\n\n"
-              . "Selecciona una opción:\n"
-              . "1️⃣ Registrar Gasto\n"
-              . "2️⃣ Mis Tarjetas\n"
-              . "3️⃣ Resumen Deuda\n"
-              . "0️⃣ Cancelar";
-
         return [
-            'text' => $text,
-            'buttons' => ['Registrar Gasto', 'Mis Tarjetas', 'Resumen Deuda']
+            'type' => 'list',
+            'text' => "🏦 *Menú Principal FinTrack*\n\n¡Hola! Bienvenido de nuevo. ¿Qué deseas hacer hoy?",
+            'buttonText' => 'Ver Opciones',
+            'options' => ['Registrar Gasto', 'Mis Tarjetas', 'Resumen Deuda']
         ];
     }
 
@@ -82,7 +77,7 @@ class WhatsAppBotService
             $cards = CreditCard::where('user_id', $user->id)->get();
             if ($cards->isEmpty()) return "No tienes tarjetas registradas.";
             
-            $text = "💳 *Tus Tarjetas:*\n" . $cards->map(fn($c) => "- {$c->name} (Corte día {$c->statement_day})")->implode("\n");
+            $text = "💳 *Tus Tarjetas:*\n" . $cards->map(fn($c) => "- {$c->name}")->implode("\n");
             return $text . "\n\nEscribe 'menu' para volver.";
         }
 
@@ -127,14 +122,12 @@ class WhatsAppBotService
         $this->setState($user, $state);
 
         $categories = Category::where('user_id', $user->id)->limit(10)->get();
-        if ($categories->isEmpty()) {
-            // Si no hay categorías, saltamos a tarjeta
-            return $this->handlePurchaseCategory($user, 'Sin categoría');
-        }
-
+        
         return [
+            'type' => 'list',
             'text' => "🏷️ ¿En qué categoría clasificarías este gasto?",
-            'buttons' => $categories->pluck('name')->map(fn($n) => Str::limit($n, 15))->toArray()
+            'buttonText' => 'Elegir Categoría',
+            'options' => $categories->pluck('name')->map(fn($n) => Str::limit($n, 20))->toArray()
         ];
     }
 
@@ -151,14 +144,12 @@ class WhatsAppBotService
         $this->setState($user, $state);
 
         $cards = CreditCard::where('user_id', $user->id)->get();
-        if ($cards->isEmpty()) {
-             return "No tienes tarjetas. Por favor registra una en la web primero.";
-        }
-
-        $buttons = $cards->pluck('name')->toArray();
+        
         return [
+            'type' => 'list',
             'text' => "💳 ¿Con qué tarjeta pagaste los $" . number_format($state['data']['total_amount'], 0, ',', '.') . "?",
-            'buttons' => array_slice($buttons, 0, 3)
+            'buttonText' => 'Seleccionar Tarjeta',
+            'options' => $cards->pluck('name')->toArray()
         ];
     }
 
@@ -168,7 +159,7 @@ class WhatsAppBotService
             ->whereRaw('LOWER(name) LIKE ?', ["%" . mb_strtolower($cardName) . "%"])
             ->first();
 
-        if (!$card) return "No encontré esa tarjeta. Escribe el nombre exacto de una de tus tarjetas.";
+        if (!$card) return "No encontré esa tarjeta. Elige una de la lista.";
 
         $state = $this->getState($user);
         $state['data']['credit_card_id'] = $card->id;
@@ -177,7 +168,8 @@ class WhatsAppBotService
         $this->setState($user, $state);
 
         return [
-            'text' => "⚡ ¿A cuántas cuotas? (Responde con el número)",
+            'type' => 'buttons',
+            'text' => "⚡ ¿A cuántas cuotas?",
             'buttons' => ['1 cuota', '12 cuotas', '24 cuotas']
         ];
     }
@@ -196,8 +188,19 @@ class WhatsAppBotService
 
         // Usamos el AiAssistantService para mostrar la confirmación final y manejar el caché
         // Esto integra el Bot con el flujo de persistencia existente.
-        $this->clearState($user);
-        return $this->aiService->preparePurchaseManual($user, $data, true);
+        $this->clearState($user); // Clear state before calling preparePurchaseManual
+
+        // La confirmación final viene de preparePurchaseManual
+        $res = $this->aiService->preparePurchaseManual($user, $data, true);
+        
+        // Convertir la respuesta de confirmación a botones si es un texto
+        $text = is_array($res) ? ($res['text'] ?? '') : $res;
+        
+        return [
+            'type' => 'buttons',
+            'text' => $text,
+            'buttons' => ['✅ Sí, registrar', '❌ No, cancelar']
+        ];
     }
 
     // --- HELPERS DE ESTADO ---
