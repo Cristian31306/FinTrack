@@ -30,9 +30,17 @@ function destroy(id) {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-gray-800">Compras</h2>
+                <div>
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">Compras</h2>
+                    <p class="mt-1 text-xs font-black uppercase tracking-[0.2em] text-gray-500">Historial de movimientos institucionales</p>
+                </div>
                 <Link :href="route('purchases.create')">
-                    <PrimaryButton>Registrar compra</PrimaryButton>
+                    <PrimaryButton class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Registrar compra
+                    </PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -40,38 +48,38 @@ function destroy(id) {
         <div class="py-8">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div
-                    class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+                    class="overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-premium"
                 >
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gray-50/50">
                             <tr>
                                 <th
-                                    class="px-4 py-3 text-left font-medium text-gray-600"
+                                    class="px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 >
                                     Fecha
                                 </th>
                                 <th
-                                    class="px-4 py-3 text-left font-medium text-gray-600"
+                                    class="px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 >
                                     Descripción
                                 </th>
                                 <th
-                                    class="px-4 py-3 text-left font-medium text-gray-600"
+                                    class="px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 >
                                     Tarjeta
                                 </th>
                                 <th
-                                    class="px-4 py-3 text-right font-medium text-gray-600"
+                                    class="px-4 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 >
                                     Total
                                 </th>
                                 <th
-                                    class="px-4 py-3 text-center font-medium text-gray-600"
+                                    class="px-4 py-4 text-center text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 >
                                     Cuotas
                                 </th>
                                 <th
-                                    class="px-4 py-3 text-right font-medium text-gray-600"
+                                    class="px-4 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400"
                                 />
                             </tr>
                         </thead>
@@ -105,15 +113,15 @@ function destroy(id) {
                                 <td class="px-4 py-3 text-center text-gray-600">
                                     {{ p.installments_count }}
                                 </td>
-                                <td class="px-4 py-3 text-right">
+                                <td class="px-4 py-4 text-right">
                                     <Link
                                         :href="route('purchases.show', p.id)"
-                                        class="text-indigo-600 hover:underline"
+                                        class="text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:underline"
                                         >Ver</Link
                                     >
                                     <button
                                         type="button"
-                                        class="ms-3 text-red-600 hover:underline"
+                                        class="ms-3 text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline"
                                         @click="destroy(p.id)"
                                     >
                                         Eliminar
@@ -137,10 +145,10 @@ function destroy(id) {
                             :key="l.label"
                             :href="l.url || '#'"
                             :class="[
-                                'rounded px-3 py-1 text-sm',
+                                'rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-all',
                                 l.active
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                                    ? 'bg-[#C8B07D] text-[#111111]'
+                                    : 'bg-gray-50 text-gray-400 hover:bg-gray-100',
                                 !l.url ? 'pointer-events-none opacity-50' : '',
                             ]"
                             v-html="l.label"

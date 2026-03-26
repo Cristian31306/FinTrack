@@ -48,11 +48,11 @@ function markPending(pr) {
                     <component :is="LucideIcons.ArrowLeft" class="h-5 w-5" />
                 </Link>
                 <div>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+                    <h2 class="text-4xl font-black tracking-tighter uppercase text-[#111111] flex items-center gap-3">
                         {{ purchase.name }}
                     </h2>
-                    <p class="mt-1 text-sm font-medium text-slate-500">
-                        Detalle de movimiento del {{ formatDateDMY(purchase.purchase_date) }}
+                    <p class="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        Detalle de movimiento institucional • {{ formatDateDMY(purchase.purchase_date) }}
                     </p>
                 </div>
             </div>
@@ -65,18 +65,18 @@ function markPending(pr) {
                 <div class="mb-8 flex flex-col sm:flex-row justify-end gap-3">
                     <Link
                         :href="route('purchases.edit', purchase.id)"
-                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-[15px] font-bold text-white shadow-lg shadow-brand-500/25 transition-all hover:scale-105 hover:bg-brand-500"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#C8B07D] px-6 py-3 text-[12px] font-black uppercase tracking-widest text-[#111111] shadow-xl shadow-[#C8B07D]/20 transition-all hover:scale-105 hover:bg-[#A68F5B]"
                     >
                         <component :is="LucideIcons.Settings2" class="h-5 w-5" />
-                        Editar Todos los Detalles
+                        Editar Detalles
                     </Link>
                 </div>
 
                 <!-- Bento Overview -->
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-3 mb-8">
                     <!-- Total y Categoría -->
-                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl md:col-span-2 transition-all hover:shadow-premium-hover">
-                        <div class="absolute -right-4 -top-4 h-48 w-48 rounded-full opacity-10 transition-transform duration-700 group-hover:scale-150" :style="{ backgroundColor: purchase.category?.color || '#cbd5e1' }"></div>
+                    <div class="group relative overflow-hidden rounded-[2.5rem] border border-black/5 bg-white p-8 shadow-premium md:col-span-2 transition-all hover:shadow-xl">
+                        <div class="absolute -right-4 -top-4 h-48 w-48 rounded-full opacity-5 transition-transform duration-700 group-hover:scale-150" :style="{ backgroundColor: purchase.category?.color || '#cbd5e1' }"></div>
                         <div class="flex flex-col sm:flex-row justify-between sm:items-end gap-6 h-full relative z-10">
                             <div>
                                 <div class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 mb-4 border shadow-sm backdrop-blur-sm" :style="{ borderColor: purchase.category?.color || '#cbd5e1', backgroundColor: (purchase.category?.color || '#cbd5e1') + '15', color: purchase.category?.color || '#475569' }">
@@ -99,12 +99,12 @@ function markPending(pr) {
                     </div>
 
                     <!-- Cuotas Info -->
-                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-indigo-50/50 p-8 shadow-premium backdrop-blur-xl flex flex-col justify-center items-center text-center transition-all hover:shadow-premium-hover hover:bg-indigo-50/80">
-                        <div class="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3">
+                    <div class="group relative overflow-hidden rounded-[2.5rem] border border-black/5 bg-gray-50 p-8 shadow-premium flex flex-col justify-center items-center text-center transition-all hover:shadow-xl hover:bg-white">
+                        <div class="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#C8B07D]/10 text-[#C8B07D] shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3">
                             <component :is="LucideIcons.CalendarDays" class="h-8 w-8" />
                         </div>
-                        <h4 class="font-outfit text-5xl font-black text-indigo-900">{{ purchase.installments_count }}</h4>
-                        <p class="mt-2 text-xs font-bold uppercase tracking-widest text-indigo-400">Cuotas Mensuales</p>
+                        <h4 class="text-5xl font-black text-[#111111]">{{ purchase.installments_count }}</h4>
+                        <p class="mt-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Cuotas Mensuales</p>
                     </div>
                 </div>
 
@@ -140,11 +140,11 @@ function markPending(pr) {
                                             {{ money(ins.total_amount) }}
                                         </td>
                                         <td class="py-4 pl-4 text-xs font-medium text-slate-500">
-                                            <Link v-if="ins.cut_id" :href="route('cuts.show', ins.cut_id)" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-brand-600 hover:bg-brand-100 hover:text-brand-700 transition-colors">
+                                            <Link v-if="ins.cut_id" :href="route('cuts.show', ins.cut_id)" class="inline-flex items-center gap-1.5 rounded-lg bg-[#C8B07D]/10 px-2.5 py-1 text-[#C8B07D] hover:bg-[#C8B07D]/20 transition-colors">
                                                 Cierre {{ formatDateDMY(ins.statement_close_date) }}
                                                 <component :is="LucideIcons.ArrowUpRight" class="h-3 w-3" />
                                             </Link>
-                                            <span v-else class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-slate-500">
+                                            <span v-else class="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 text-gray-400">
                                                 Cierre {{ formatDateDMY(ins.statement_close_date) }}
                                             </span>
                                         </td>
@@ -175,10 +175,10 @@ function markPending(pr) {
                                         <p class="font-outfit text-xl font-black transition-all" :class="pr.status === 'pagado' ? 'text-emerald-600 line-through opacity-70' : 'text-slate-900'">
                                             {{ money(pr.owed_amount) }}
                                         </p>
-                                        <button v-if="pr.status !== 'pagado'" @click="markPaid(pr)" class="mt-1 text-[10px] font-bold uppercase tracking-widest text-brand-600 hover:text-brand-700 hover:underline transition-all">
+                                        <button v-if="pr.status !== 'pagado'" @click="markPaid(pr)" class="mt-1 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:text-[#A68F5B] hover:underline transition-all">
                                             Marcar Pagado
                                         </button>
-                                        <button v-else @click="markPending(pr)" class="mt-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 hover:underline transition-all">
+                                        <button v-else @click="markPending(pr)" class="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 hover:underline transition-all">
                                             Deshacer
                                         </button>
                                     </div>

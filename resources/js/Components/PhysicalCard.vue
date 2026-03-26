@@ -55,7 +55,7 @@ const secondaryTextColorClass = computed(() => {
 
 <template>
     <div 
-        class="group/card relative aspect-[1.586/1] w-full overflow-hidden rounded-3xl p-6 shadow-2xl transition-all hover:scale-[1.02] hover:shadow-brand-500/20"
+        class="group/card relative aspect-[1.586/1] w-full overflow-hidden rounded-3xl p-6 shadow-2xl transition-all hover:scale-[1.02] hover:shadow-[#C8B07D]/20"
         :style="{ backgroundColor: color }"
         :class="textColorClass"
     >
@@ -67,7 +67,7 @@ const secondaryTextColorClass = computed(() => {
             <!-- Top Row: Franchise & Chip & Actions -->
             <div class="flex justify-between items-start">
                 <div class="flex items-center gap-4">
-                    <div class="h-10 w-12 rounded-lg bg-gradient-to-br from-yellow-200 to-yellow-500 opacity-90 shadow-inner flex items-center justify-center border border-yellow-600/20">
+                    <div class="h-10 w-12 rounded-lg bg-gradient-to-br from-yellow-200 via-[#C8B07D] to-yellow-600 opacity-90 shadow-inner flex items-center justify-center border border-yellow-600/20">
                         <!-- Chip Lines -->
                         <div class="grid grid-cols-2 gap-px w-full h-full p-2 opacity-40">
                             <div class="border-r border-b border-black/20"></div>

@@ -111,7 +111,7 @@ function submitPayment() {
                     <nav class="mb-4 flex" aria-label="Breadcrumb">
                         <ol class="inline-flex items-center space-x-1 md:space-x-3">
                             <li class="inline-flex items-center">
-                                <Link :href="route('cuts.index')" class="text-sm font-medium text-slate-500 transition-colors hover:text-brand-600">
+                                <Link :href="route('cuts.index')" class="text-[10px] font-black uppercase tracking-widest text-gray-400 transition-colors hover:text-[#C8B07D]">
                                     Cortes
                                 </Link>
                             </li>
@@ -125,11 +125,11 @@ function submitPayment() {
                             </li>
                         </ol>
                     </nav>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         {{ formatCardLabel(cut.credit_card) }}
                     </h2>
-                    <p class="mt-1 text-sm text-slate-500">
-                        Periodo del <span class="font-semibold text-slate-700">{{ formatDateDMY(cut.period_start) }}</span> al <span class="font-semibold text-slate-700">{{ formatDateDMY(cut.period_end) }}</span>
+                    <p class="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        Periodo institucional • De <span class="text-[#111111]">{{ formatDateDMY(cut.period_start) }}</span> a <span class="text-[#111111]">{{ formatDateDMY(cut.period_end) }}</span>
                     </p>
                 </div>
                 <div class="mt-4 flex items-center gap-3 sm:mt-0">
@@ -148,7 +148,7 @@ function submitPayment() {
                 <!-- Bento Stats Grid -->
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
                     <!-- Total Facturado -->
-                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:shadow-premium-hover">
+                    <div class="group relative overflow-hidden rounded-[2.5rem] border border-black/5 bg-white p-8 shadow-premium transition-all hover:shadow-xl">
                         <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-slate-50 opacity-50 transition-transform group-hover:scale-110"></div>
                         <div class="relative">
                             <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-inner">
@@ -164,7 +164,7 @@ function submitPayment() {
                     </div>
 
                     <!-- Pagado -->
-                    <div class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:shadow-premium-hover">
+                    <div class="group relative overflow-hidden rounded-[2.5rem] border border-black/5 bg-white p-8 shadow-premium transition-all hover:shadow-xl">
                         <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-50 opacity-50 transition-transform group-hover:scale-110"></div>
                         <div class="relative">
                             <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-inner">
@@ -186,7 +186,7 @@ function submitPayment() {
                     </div>
 
                     <!-- Pendiente -->
-                    <div class="group relative overflow-hidden rounded-[2rem] border border-brand-100 bg-gradient-to-br from-brand-600 to-brand-500 p-8 shadow-2xl transition-all hover:-translate-y-1">
+                    <div class="group relative overflow-hidden rounded-[2.5rem] border border-[#C8B07D]/10 bg-gradient-to-br from-[#111111] via-[#1a1a1a] to-[#000000] p-8 shadow-2xl transition-all hover:-translate-y-1">
                         <div class="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white/10 opacity-20"></div>
                         <div class="relative">
                             <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-md">
@@ -195,7 +195,7 @@ function submitPayment() {
                                 </svg>
                             </div>
                             <p class="text-sm font-semibold tracking-wide text-white/80">PENDIENTE POR PAGAR</p>
-                            <h3 class="mt-1 font-outfit text-3xl font-bold tracking-tight text-white">
+                            <h3 class="mt-1 text-3xl font-black tracking-tight text-[#C8B07D]">
                                 {{ money(remaining) }}
                             </h3>
                         </div>
@@ -205,10 +205,9 @@ function submitPayment() {
                 <div class="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-3">
                     <!-- Left: Installments & Payments -->
                     <div class="space-y-8 lg:col-span-2">
-                        <!-- Installments List -->
-                        <div class="overflow-hidden rounded-3xl border border-white bg-white/40 shadow-premium backdrop-blur-sm">
-                            <div class="border-b border-slate-100 bg-white/60 px-8 py-6">
-                                <h3 class="font-outfit text-lg font-bold text-slate-900">Consumos Incluidos</h3>
+                        <div class="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-premium transition-all">
+                            <div class="border-b border-gray-100 bg-white/60 px-8 py-6">
+                                <h3 class="text-[10px] font-black uppercase tracking-widest text-[#111111]">Consumos Incluidos</h3>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left">
@@ -225,7 +224,7 @@ function submitPayment() {
                                                 <Link
                                                     v-if="ins.purchase_id"
                                                     :href="route('purchases.show', ins.purchase_id)"
-                                                    class="font-semibold text-slate-700 transition-colors hover:text-brand-600"
+                                                    class="font-black text-gray-700 transition-colors hover:text-[#C8B07D]"
                                                 >
                                                     {{ ins.purchase?.name }}
                                                 </Link>
@@ -276,9 +275,9 @@ function submitPayment() {
                     <!-- Right: Sticky Payment Form -->
                     <div class="lg:col-span-1">
                         <div class="sticky top-24">
-                            <div class="overflow-hidden rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-2xl backdrop-blur-2xl">
-                                <h3 class="font-outfit text-2xl font-black tracking-tight text-slate-900">Registrar Pago</h3>
-                                <p class="mt-2 text-sm leading-relaxed text-slate-500">
+                            <div class="overflow-hidden rounded-[2.5rem] border border-black/5 bg-white p-8 shadow-2xl">
+                                <h3 class="text-2xl font-black tracking-tighter uppercase text-[#111111]">Registrar Pago</h3>
+                                <p class="mt-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     {{ paymentHint }}
                                 </p>
 
@@ -293,14 +292,14 @@ function submitPayment() {
                                     <div class="relative">
                                         <InputLabel for="amount" class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500" value="Monto a pagar" />
                                         <div class="relative group">
-                                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-brand-600">$</span>
+                                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-[#C8B07D]">$</span>
                                             <TextInput
                                                 id="amount"
                                                 v-model="payForm.amount"
                                                 type="number"
                                                 step="0.01"
                                                 min="0.01"
-                                                class="block w-full rounded-2xl border-0 bg-white pl-10 pt-4 pb-4 text-xl font-bold shadow-inner ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500"
+                                                class="block w-full rounded-2xl border-0 bg-gray-50 pl-10 pt-4 pb-4 text-xl font-black shadow-inner ring-1 ring-black/5 focus:ring-2 focus:ring-[#C8B07D]"
                                                 required
                                                 readonly
                                             />

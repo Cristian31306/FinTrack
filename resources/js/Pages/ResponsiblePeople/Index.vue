@@ -20,11 +20,16 @@ function destroy(id) {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-gray-800">
-                    Personas responsables
-                </h2>
+                <div>
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
+                        Responsables
+                    </h2>
+                    <p class="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Gestión de participaciones externas</p>
+                </div>
                 <Link :href="route('responsible-people.create')">
-                    <PrimaryButton>Nuevo responsable</PrimaryButton>
+                    <button class="inline-flex items-center gap-2 rounded-xl bg-[#C8B07D] px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#111111] shadow-lg transition-all hover:bg-[#A68F5B] hover:shadow-[#C8B07D]/25">
+                        Nuevo responsable
+                    </button>
                 </Link>
             </div>
         </template>
@@ -32,7 +37,7 @@ function destroy(id) {
         <div class="py-8">
             <div class="mx-auto max-w-3xl sm:px-6 lg:px-8">
                 <ul
-                    class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm"
+                    class="overflow-hidden rounded-[2.5rem] border border-black/5 bg-white shadow-premium"
                 >
                     <li
                         v-for="p in people"
@@ -48,17 +53,17 @@ function destroy(id) {
                                 {{ p.email }}
                             </p>
                         </div>
-                        <div class="flex gap-3 text-sm">
+                        <div class="flex gap-4 text-[10px] font-black uppercase tracking-widest text-[#C8B07D]">
                             <Link
                                 :href="
                                     route('responsible-people.edit', p.id)
                                 "
-                                class="text-indigo-600 hover:underline"
+                                class="hover:underline transition-all hover:tracking-widest"
                                 >Editar</Link
                             >
                             <button
                                 type="button"
-                                class="text-red-600 hover:underline"
+                                class="text-red-500 hover:underline"
                                 @click="destroy(p.id)"
                             >
                                 Eliminar

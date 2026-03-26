@@ -54,10 +54,10 @@ function submit() {
                     </svg>
                 </Link>
                 <div>
-                    <h2 class="font-outfit text-2xl font-black tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         Editar Tarjeta
                     </h2>
-                    <p class="text-sm text-slate-500">Actualiza los detalles de tu medio de pago.</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Actualización de activo financiero</p>
                 </div>
             </div>
         </template>
@@ -75,9 +75,9 @@ function submit() {
                             :color="form.color"
                         />
                         
-                        <div class="mt-8 rounded-3xl bg-slate-100 p-6 border border-slate-200">
-                            <h4 class="font-bold text-slate-900">Información de la Tarjeta</h4>
-                            <p class="mt-1 text-sm text-slate-600 leading-relaxed">
+                        <div class="mt-8 rounded-3xl bg-[#C8B07D]/5 p-6 border border-[#C8B07D]/20">
+                            <h4 class="font-black uppercase tracking-tight text-[#111111]">Información de la Tarjeta</h4>
+                            <p class="mt-1 text-xs font-medium text-gray-500 leading-relaxed">
                                 Los cambios realizados aquí se reflejarán inmediatamente en tus reportes y cálculos de deudas.
                             </p>
                         </div>
@@ -106,7 +106,7 @@ function submit() {
                                 <select
                                     id="franchise"
                                     v-model="form.franchise"
-                                    class="block w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium transition-all focus:border-brand-500 focus:ring-brand-500"
+                                    class="block w-full rounded-xl border-black/5 bg-gray-50 px-4 py-3 text-sm font-medium transition-all focus:border-[#C8B07D] focus:ring-[#C8B07D]"
                                 >
                                     <option v-for="f in franchises" :key="f" :value="f">{{ f }}</option>
                                 </select>

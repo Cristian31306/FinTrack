@@ -68,16 +68,16 @@ function deleteCategory(id) {
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         Gestionar Categorías
                     </h2>
-                    <p class="mt-1 text-sm text-slate-500">Define cómo clasificar tus gastos con iconos y colores.</p>
+                    <p class="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Personalización del ecosistema financiero</p>
                 </div>
                 <button
                     @click="openModal()"
-                    class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-brand-500 hover:shadow-brand-500/25 active:scale-95"
+                    class="inline-flex items-center gap-2 rounded-xl bg-[#C8B07D] px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#111111] shadow-lg transition-all hover:bg-[#A68F5B] hover:shadow-[#C8B07D]/25 active:scale-95"
                 >
-                    <component :is="LucideIcons.Plus" class="h-5 w-5" />
+                    <component :is="LucideIcons.Plus" class="h-4 w-4" />
                     Nueva Categoría
                 </button>
             </div>
@@ -105,7 +105,7 @@ function deleteCategory(id) {
                                 </p>
                             </div>
                             <div v-if="c.user_id" class="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                <button @click="openModal(c)" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                                <button @click="openModal(c)" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#C8B07D]">
                                     <component :is="LucideIcons.Pencil" class="h-5 w-5" />
                                 </button>
                                 <button @click="deleteCategory(c.id)" class="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600">
@@ -161,8 +161,8 @@ function deleteCategory(id) {
                                     :class="[
                                         'flex h-10 w-10 items-center justify-center rounded-lg transition-all',
                                         form.icon === iconName 
-                                            ? 'bg-brand-600 text-white shadow-lg scale-105' 
-                                            : 'hover:bg-brand-100 hover:text-brand-600 text-slate-400'
+                                            ? 'bg-[#C8B07D] text-[#111111] shadow-lg scale-105' 
+                                            : 'hover:bg-[#C8B07D]/10 hover:text-[#C8B07D] text-slate-400'
                                     ]"
                                 >
                                     <component :is="LucideIcons[iconName]" class="h-5 w-5" />
@@ -178,10 +178,10 @@ function deleteCategory(id) {
                             >
                                 Cancelar
                             </button>
-                            <button
+                             <button
                                 type="submit"
                                 :disabled="form.processing"
-                                class="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-brand-500 disabled:opacity-50"
+                                class="flex-1 rounded-xl bg-[#111111] py-3 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] shadow-lg transition-all hover:bg-black disabled:opacity-50"
                             >
                                 {{ editingCategory ? 'Guardar' : 'Crear' }}
                             </button>

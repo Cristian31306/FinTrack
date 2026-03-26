@@ -23,10 +23,10 @@ function money(n) {
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         Cortes de Facturación
                     </h2>
-                    <p class="mt-1 text-sm text-slate-500">Administra y revisa los periodos de cobro de tus tarjetas.</p>
+                    <p class="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Control de periodos institucionales</p>
                 </div>
             </div>
         </template>
@@ -37,7 +37,7 @@ function money(n) {
                     <div class="overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
-                                <tr class="bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                <tr class="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     <th class="px-8 py-5">Tarjeta</th>
                                     <th class="px-8 py-5">Periodo</th>
                                     <th class="px-8 py-5 text-right">Total Corte</th>
@@ -50,10 +50,10 @@ function money(n) {
                                 <tr v-for="c in cuts.data" :key="c.id" class="group transition-colors hover:bg-white/60">
                                     <td class="px-8 py-6">
                                         <div class="flex items-center gap-3">
-                                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 font-bold">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8B07D]/10 text-[#C8B07D] font-black">
                                                 {{ c.credit_card?.bank_name?.charAt(0) || 'CC' }}
                                             </div>
-                                            <span class="font-bold text-slate-900">{{ formatCardLabel(c.credit_card) }}</span>
+                                            <span class="font-black text-[#111111]">{{ formatCardLabel(c.credit_card) }}</span>
                                         </div>
                                     </td>
                                     <td class="px-8 py-6">
@@ -67,14 +67,14 @@ function money(n) {
                                         {{ money(c.total_accrued) }}
                                     </td>
                                     <td class="px-8 py-6 text-right">
-                                        <span class="font-outfit font-bold" :class="c.remaining_balance > 0 ? 'text-brand-600' : 'text-emerald-600'">
+                                        <span class="font-black" :class="c.remaining_balance > 0 ? 'text-[#C8B07D]' : 'text-emerald-600'">
                                             {{ money(c.remaining_balance) }}
                                         </span>
                                     </td>
                                     <td class="px-8 py-6 text-center">
                                         <span :class="[
-                                            'inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider',
-                                            c.status === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                            'inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest',
+                                            c.status === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
                                         ]">
                                             {{ c.status }}
                                         </span>
@@ -82,7 +82,7 @@ function money(n) {
                                     <td class="px-8 py-6 text-right">
                                         <Link
                                             :href="route('cuts.show', c.id)"
-                                            class="inline-flex items-center gap-1 font-bold text-brand-600 transition-all hover:gap-2 hover:text-brand-700"
+                                            class="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] transition-all hover:gap-2 hover:text-[#A68F5B]"
                                         >
                                             Ver detalle
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,10 +103,10 @@ function money(n) {
                                 :key="l.label"
                                 :href="l.url || '#'"
                                 :class="[
-                                    'rounded-xl px-4 py-2 text-sm font-bold transition-all',
+                                    'rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all',
                                     l.active
-                                        ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30'
-                                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                                        ? 'bg-[#C8B07D] text-[#111111] shadow-lg shadow-[#C8B07D]/30'
+                                        : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50',
                                     !l.url ? 'pointer-events-none opacity-50' : '',
                                 ]"
                                 v-html="l.label"

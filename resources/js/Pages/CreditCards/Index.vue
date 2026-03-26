@@ -32,10 +32,10 @@ const money = (val) => {
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         Mis Tarjetas
                     </h2>
-                    <p class="mt-1 text-sm text-slate-500">Administra tus medios de pago y cupos disponibles.</p>
+                    <p class="mt-1 text-xs font-black uppercase tracking-[0.2em] text-gray-500">Gestión de activos institucionales</p>
                 </div>
                 <Link :href="route('credit-cards.create')">
                     <PrimaryButton class="flex items-center gap-2">
@@ -71,14 +71,14 @@ const money = (val) => {
                     </div>
                 </div>
 
-                <div v-else class="rounded-[3rem] border border-dashed border-slate-300 bg-white/40 p-16 text-center backdrop-blur-sm">
-                    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <div v-else class="rounded-[3rem] border border-dashed border-gray-200 bg-white p-16 text-center shadow-premium">
+                    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 text-[#C8B07D]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                     </div>
-                    <h3 class="font-outfit text-2xl font-black text-slate-900">No tienes tarjetas registradas</h3>
-                    <p class="mt-2 text-slate-500">Agrega tu primera tarjeta para empezar a organizar tus finanzas.</p>
+                    <h3 class="text-2xl font-black uppercase tracking-tight text-[#111111]">No hay tarjetas registradas</h3>
+                    <p class="mt-2 text-xs font-black uppercase tracking-[0.2em] text-gray-400">Inicia tu gestión financiera hoy</p>
                     <Link :href="route('credit-cards.create')" class="mt-8 inline-flex">
                         <PrimaryButton>Agregar mi primera tarjeta</PrimaryButton>
                     </Link>

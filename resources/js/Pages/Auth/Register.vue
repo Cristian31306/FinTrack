@@ -44,11 +44,11 @@ const submit = () => {
     <GuestLayout>
         <Head title="Registro" />
 
-        <h1 class="mb-1 text-center text-xl font-bold text-slate-900">
-            Crear cuenta
+        <h1 class="mb-2 text-center text-3xl font-black uppercase tracking-tighter text-[#111111]">
+            Crear Cuenta
         </h1>
-        <p class="mb-6 text-center text-sm text-slate-600">
-            Empieza a organizar tus tarjetas con FinTrack
+        <p class="mb-8 text-center text-xs font-black uppercase tracking-[0.2em] text-gray-500">
+            Únete a la elite de FinTrack
         </p>
 
         <form @submit.prevent="submit">
@@ -180,7 +180,7 @@ const submit = () => {
             >
                 <Link
                     :href="route('login')"
-                    class="text-center text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-emerald-700 sm:me-auto sm:text-left"
+                    class="text-center text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:text-[#A68F5B] transition-colors sm:me-auto sm:text-left"
                 >
                     ¿Ya tienes cuenta? Ingresar
                 </Link>

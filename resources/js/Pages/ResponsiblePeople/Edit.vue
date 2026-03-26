@@ -24,19 +24,25 @@ const form = useForm({
             <div class="flex items-center gap-4">
                 <Link
                     :href="route('responsible-people.index')"
-                    class="text-sm text-gray-600 hover:text-gray-900"
-                    >← Volver</Link
+                    class="group flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm transition-all hover:bg-slate-50"
                 >
-                <h2 class="text-xl font-semibold text-gray-800">
-                    Editar responsable
-                </h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </Link>
+                <div>
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
+                        Editar Responsable
+                    </h2>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Actualización de datos del aliado</p>
+                </div>
             </div>
         </template>
 
         <div class="py-8">
             <div class="mx-auto max-w-lg sm:px-6 lg:px-8">
                 <form
-                    class="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+                    class="space-y-6 rounded-[2.5rem] bg-white p-8 shadow-premium lg:p-10"
                     @submit.prevent="
                         form.put(
                             route('responsible-people.update', person.id),
@@ -71,8 +77,8 @@ const form = useForm({
                             class="mt-1 block w-full"
                         />
                     </div>
-                    <PrimaryButton :disabled="form.processing">
-                        Actualizar
+                    <PrimaryButton class="w-full justify-center py-4" :disabled="form.processing">
+                        Actualizar Cambios
                     </PrimaryButton>
                 </form>
             </div>

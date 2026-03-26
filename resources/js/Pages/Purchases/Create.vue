@@ -64,19 +64,25 @@ function submit() {
             <div class="flex items-center gap-4">
                 <Link
                     :href="route('purchases.index')"
-                    class="text-sm text-gray-600 hover:text-gray-900"
-                    >← Volver</Link
+                    class="group flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm transition-all hover:bg-slate-50"
                 >
-                <h2 class="text-xl font-semibold text-gray-800">
-                    Registrar compra
-                </h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </Link>
+                <div>
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
+                        Registrar Compra
+                    </h2>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Documentación de movimiento financiero</p>
+                </div>
             </div>
         </template>
 
         <div class="py-8">
             <div class="mx-auto max-w-2xl sm:px-6 lg:px-8">
                 <form
-                    class="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+                    class="space-y-8 rounded-[2.5rem] bg-white p-8 shadow-premium lg:p-10"
                     @submit.prevent="submit"
                 >
                     <div>
@@ -87,7 +93,7 @@ function submit() {
                         <select
                             id="credit_card_id"
                             v-model="form.credit_card_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            class="mt-1 block w-full rounded-xl border-black/5 bg-gray-50 px-4 py-3 text-sm font-medium transition-all focus:border-[#C8B07D] focus:ring-[#C8B07D]"
                             required
                         >
                             <option
@@ -115,8 +121,8 @@ function submit() {
                                 :class="[
                                     'group relative flex h-12 w-12 items-center justify-center rounded-xl transition-all shadow-sm ring-1 ring-slate-100',
                                     form.category_id === cat.id 
-                                        ? 'bg-brand-600 text-white shadow-brand-500/25 ring-brand-500 ring-2 scale-110 z-10' 
-                                        : 'bg-white hover:bg-brand-50 text-slate-400 hover:text-brand-600'
+                                        ? 'bg-[#C8B07D] text-[#111111] shadow-[#C8B07D]/25 ring-[#C8B07D] ring-2 scale-110 z-10' 
+                                        : 'bg-white hover:bg-[#C8B07D]/5 text-slate-400 hover:text-[#C8B07D]'
                                 ]"
                                 :title="cat.name"
                             >
@@ -271,7 +277,7 @@ function submit() {
                         </div>
                         <button
                             type="button"
-                            class="mt-3 text-sm text-indigo-600 hover:underline"
+                            class="mt-3 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:underline"
                             @click="addRow"
                         >
                             + Añadir responsable
@@ -282,8 +288,8 @@ function submit() {
                         />
                     </div>
 
-                    <PrimaryButton :disabled="form.processing">
-                        Guardar compra
+                    <PrimaryButton class="w-full justify-center py-4" :disabled="form.processing">
+                        Guardar Compra
                     </PrimaryButton>
                 </form>
             </div>

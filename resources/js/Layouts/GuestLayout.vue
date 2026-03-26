@@ -4,46 +4,37 @@ import { Link } from '@inertiajs/vue3';
 
 <template>
     <div
-        class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-10 sm:px-6"
+        class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-white px-4 py-10 sm:px-6 antialiased"
     >
-        <div
-            class="pointer-events-none fixed inset-0 -z-10"
-            aria-hidden="true"
-        >
-            <div
-                class="absolute -left-24 top-0 h-72 w-72 rounded-full bg-emerald-500/20 blur-[90px]"
-            />
-            <div
-                class="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-indigo-600/15 blur-[100px]"
-            />
-        </div>
+        <!-- Background Elements -->
+        <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-[#C8B07D]/10 rounded-full blur-[120px]"></div>
+            <div class="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-[#C8B07D]/20 rounded-full blur-[100px] opacity-20">
+            </div>
 
-        <div class="mb-8">
-            <Link
-                href="/"
-                class="flex items-center gap-2.5 transition opacity-90 hover:opacity-100"
-            >
-                <span
-                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-lg font-black text-slate-950 shadow-lg shadow-emerald-500/25"
-                    >F</span
-                >
-                <span class="text-xl font-bold tracking-tight text-white"
-                    >FinTrack</span
-                >
+            <!-- Subtle Grid Pattern -->
+            <div class="absolute inset-0 opacity-[0.05]"
+                style="background-image: radial-gradient(#C8B07D 0.5px, transparent 0.5px); background-size: 24px 24px;">
+            </div>
+        </div>
+ 
+        <div class="relative z-10 mb-8">
+            <Link href="/">
+                <img src="/logo-full.png" alt="FinTrack Logo" class="h-32 w-auto hover:scale-105 transition-transform duration-300">
             </Link>
         </div>
-
+ 
         <div
-            class="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-white/[0.97] px-6 py-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:px-8"
+            class="relative z-10 w-full max-w-md overflow-hidden rounded-[2.5rem] border border-black/5 bg-gray-50/80 px-8 py-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:px-10"
         >
             <slot />
         </div>
-
-        <p class="mt-8 text-center text-xs text-slate-500">
+ 
+        <p class="relative z-10 mt-8 text-center text-[10px] font-black uppercase tracking-[0.2em]">
             <Link
                 href="/"
-                class="text-slate-400 underline-offset-2 hover:text-emerald-400 hover:underline"
-                >Volver al inicio</Link
+                class="text-gray-400 hover:text-[#C8B07D] transition-colors"
+                >← Volver al inicio</Link
             >
         </p>
     </div>

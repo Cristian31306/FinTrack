@@ -29,11 +29,11 @@ const submit = () => {
     <GuestLayout>
         <Head title="Ingresar" />
 
-        <h1 class="mb-1 text-center text-xl font-bold text-slate-900">
-            Bienvenido de nuevo
+        <h1 class="mb-2 text-center text-3xl font-black uppercase tracking-tighter text-[#111111]">
+            Bienvenido
         </h1>
-        <p class="mb-6 text-center text-sm text-slate-600">
-            Ingresa para ver tu panel y tus tarjetas
+        <p class="mb-8 text-center text-xs font-black uppercase tracking-[0.2em] text-gray-500">
+            Ingresa a tu cuenta FinTrack
         </p>
 
         <div
@@ -105,7 +105,7 @@ const submit = () => {
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="order-2 text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-emerald-700 sm:order-1"
+                    class="order-2 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:text-[#A68F5B] transition-colors sm:order-1"
                 >
                     ¿Olvidaste tu contraseña?
                 </Link>
@@ -120,13 +120,13 @@ const submit = () => {
             </div>
         </form>
 
-        <p class="mt-6 text-center text-sm text-slate-600">
+        <p class="mt-8 text-center text-[10px] font-black uppercase tracking-widest text-gray-500">
             ¿No tienes cuenta?
             <Link
                 :href="route('register')"
-                class="font-semibold text-emerald-700 hover:text-emerald-800"
+                class="text-[#C8B07D] hover:text-[#A68F5B] transition-colors"
             >
-                Regístrate
+                Regístrate ahora
             </Link>
         </p>
     </GuestLayout>

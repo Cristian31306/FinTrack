@@ -35,7 +35,7 @@ defineExpose({ focus: () => input.value?.focus() });
         <input
             v-bind="{ ...$attrs, class: undefined }"
             :type="inputType"
-            class="rounded-xl border-slate-200 shadow-sm focus:border-brand-500 focus:ring-brand-500/20 px-4 py-2 transition-all w-full pr-10"
+            class="rounded-xl border-black/10 bg-white shadow-sm focus:border-[#C8B07D] focus:ring-[#C8B07D]/20 px-4 py-2 transition-all w-full pr-10 text-[#111111]"
             v-model="model"
             ref="input"
         />
@@ -59,7 +59,7 @@ defineExpose({ focus: () => input.value?.focus() });
         v-else
         v-bind="$attrs"
         :type="inputType"
-        class="rounded-xl border-slate-200 shadow-sm focus:border-brand-500 focus:ring-brand-500/20 px-4 py-2 transition-all"
+        class="rounded-xl border-black/10 bg-white shadow-sm focus:border-[#C8B07D] focus:ring-[#C8B07D]/20 px-4 py-2 transition-all text-[#111111]"
         v-model="model"
         ref="input"
     />

@@ -62,10 +62,10 @@ function upcomingCardLabel(u) {
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-outfit text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h2 class="text-4xl font-black tracking-tighter uppercase text-[#111111]">
                         Bienvenido, {{ $page.props.auth.user.name }}
                     </h2>
-                    <p class="mt-1 text-sm text-slate-500">Aquí tienes un resumen de tus finanzas y próximos pagos.</p>
+                    <p class="mt-1 text-xs font-black uppercase tracking-[0.2em] text-gray-500">Resumen financiero institucional</p>
                 </div>
                 <div class="hidden sm:flex items-center gap-3">
                     <Link :href="route('credit-cards.create')"
@@ -74,7 +74,7 @@ function upcomingCardLabel(u) {
                         Nueva Tarjeta
                     </Link>
                     <Link :href="route('purchases.create')"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-brand-500 hover:shadow-brand-500/25 active:scale-95">
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#C8B07D] px-5 py-2.5 text-xs font-black uppercase tracking-widest text-[#111111] shadow-xl shadow-[#C8B07D]/20 transition-all hover:bg-[#A68F5B] active:scale-95">
                         <component :is="LucideIcons.Plus" class="h-5 w-5" />
                         Nueva Compra
                     </Link>
@@ -108,9 +108,9 @@ function upcomingCardLabel(u) {
                 <!-- Bento Stats Grid -->
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     <div
-                        class="group relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-premium backdrop-blur-xl transition-all hover:shadow-premium-hover">
+                        class="group relative overflow-hidden rounded-[2.5rem] border border-black/5 bg-white p-8 shadow-[0_20px_50px_rgba(0,0,0,0.04)] transition-all hover:shadow-xl">
                         <div
-                            class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-brand-50 opacity-50 transition-transform group-hover:scale-110">
+                            class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#C8B07D]/5 transition-transform group-hover:scale-110">
                         </div>
                         <div class="relative">
                             <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">Deuda Total Estimada
@@ -119,9 +119,8 @@ function upcomingCardLabel(u) {
                                 {{ money(total_debt) }}
                             </h3>
                             <div class="mt-6 flex items-center gap-2">
-                                <span class="inline-flex h-2 w-2 rounded-full bg-brand-500 animate-pulse"></span>
-                                <span class="text-xs font-bold text-slate-400 capitalize">Actualizado hace un
-                                    momento</span>
+                                <span class="inline-flex h-2 w-2 rounded-full bg-[#C8B07D] animate-pulse"></span>
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Actualizado hace un momento</span>
                             </div>
                         </div>
                     </div>
@@ -139,7 +138,7 @@ function upcomingCardLabel(u) {
                             </h3>
                             <div class="mt-6">
                                 <Link :href="route('purchases.index')"
-                                    class="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors uppercase tracking-widest">
+                                    class="text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:text-[#A68F5B] transition-colors">
                                     Ver consumos →</Link>
                             </div>
                         </div>

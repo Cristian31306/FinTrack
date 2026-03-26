@@ -53,10 +53,10 @@ function submit() {
                     </svg>
                 </Link>
                 <div>
-                    <h2 class="font-outfit text-2xl font-black tracking-tight text-slate-900">
+                    <h2 class="text-3xl font-black tracking-tighter uppercase text-[#111111]">
                         Nueva Tarjeta
                     </h2>
-                    <p class="text-sm text-slate-500">Configura tu nuevo medio de pago.</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Configuración de activo financiero</p>
                 </div>
             </div>
         </template>
@@ -74,16 +74,16 @@ function submit() {
                             :color="form.color"
                         />
                         
-                        <div class="mt-8 rounded-3xl bg-blue-50 p-6 border border-blue-100">
+                        <div class="mt-8 rounded-3xl bg-[#C8B07D]/5 p-6 border border-[#C8B07D]/20">
                             <div class="flex gap-3">
-                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C8B07D]/10 text-[#C8B07D]">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-blue-900">Dato importante</h4>
-                                    <p class="mt-1 text-sm text-blue-700 leading-relaxed">
+                                    <h4 class="text-sm font-black uppercase tracking-tight text-[#111111]">Dato importante</h4>
+                                    <p class="mt-1 text-xs font-medium text-gray-500 leading-relaxed">
                                         Los días de corte y pago son fundamentales para que FinTrack calcule tus deudas próximas correctamente.
                                     </p>
                                 </div>
@@ -114,7 +114,7 @@ function submit() {
                                 <select
                                     id="franchise"
                                     v-model="form.franchise"
-                                    class="block w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium transition-all focus:border-brand-500 focus:ring-brand-500"
+                                    class="block w-full rounded-xl border-black/5 bg-gray-50 px-4 py-3 text-sm font-medium transition-all focus:border-[#C8B07D] focus:ring-[#C8B07D]"
                                 >
                                     <option v-for="f in franchises" :key="f" :value="f">{{ f }}</option>
                                 </select>
