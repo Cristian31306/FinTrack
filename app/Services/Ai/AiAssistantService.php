@@ -165,10 +165,16 @@ class AiAssistantService
             $model = 'models/' . $model;
         }
         $url     = self::BASE_URL . $model . ':generateContent';
-
         $retries = $isWhatsApp ? 3 : self::HTTP_RETRIES;
         $retryMs = $isWhatsApp ? 1500 : self::HTTP_RETRY_MS;
         $timeout = $isWhatsApp ? 12 : 60;
+
+        Log::info('[FinTrack AI] Intentando llamada', [
+            'url' => $url,
+            'isWhatsApp' => $isWhatsApp,
+            'retries' => $retries,
+            'timeout' => $timeout
+        ]);
 
         try {
             $response = Http::withoutVerifying()
