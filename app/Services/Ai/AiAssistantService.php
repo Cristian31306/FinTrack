@@ -36,7 +36,7 @@ class AiAssistantService
     // ─────────────────────────────────────────────────────────────────────────
 
     private const BASE_URL     = 'https://generativelanguage.googleapis.com/v1beta/';
-    private const MODEL        = 'models/gemini-flash-latest';
+
     private const CACHE_TTL    = 10;   // minutos
     private const MAX_TOKENS   = 1024;
     private const TEMPERATURE  = 0.3;
@@ -159,7 +159,7 @@ class AiAssistantService
         ?array  $toolConfig,
     ): string|array {
         $payload = $this->buildPayload($contents, $systemPrompt, $toolConfig);
-        $url     = self::BASE_URL . self::MODEL . ':generateContent';
+        $url     = self::BASE_URL . config('services.gemini.model') . ':generateContent';
 
         try {
             $response = Http::withoutVerifying()

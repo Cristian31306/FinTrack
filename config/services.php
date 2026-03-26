@@ -40,8 +40,10 @@ return [
     ],
 
     'gemini' => [
-        'key' => env('GOOGLE_AI_API_KEY'),
+        'key'   => env('GOOGLE_AI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'models/gemini-flash-latest'),
     ],
+
 
     'twilio' => [
         'sid' => env('TWILIO_SID'),
