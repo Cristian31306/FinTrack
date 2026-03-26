@@ -40,8 +40,8 @@ class AiAssistantService
     private const CACHE_TTL    = 10;   // minutos
     private const MAX_TOKENS   = 1024;
     private const TEMPERATURE  = 0.3;
-    private const HTTP_RETRIES = 5;
-    private const HTTP_RETRY_MS = 2000;
+    private const HTTP_RETRIES = 10;
+    private const HTTP_RETRY_MS = 3000;
     private const RECENT_PURCHASES_LIMIT = 15;
     private const RECENT_PAYMENTS_LIMIT  = 10;
 
@@ -158,12 +158,15 @@ class AiAssistantService
         string  $systemPrompt,
         ?array  $toolConfig,
     ): string|array {
+        set_time_limit(120);
         $payload = $this->buildPayload($contents, $systemPrompt, $toolConfig);
         $model   = config('services.gemini.model');
         if (!str_starts_with($model, 'models/')) {
             $model = 'models/' . $model;
         }
         $url     = self::BASE_URL . $model . ':generateContent';
+        Log::info('[FinTrack AI] Llamando a Gemini', ['url' => $url, 'model_config' => config('services.gemini.model')]);
+
 
 
         try {
