@@ -276,7 +276,7 @@ const selectQuickAction = (action) => {
                                 </template>
                                 <template v-else>
                                     <div v-html="msg.content"></div>
-                                    
+
                                     <!-- Botones de Confirmación de Compra (Vista Previa) -->
                                     <div v-if="msg.role === 'bot' && msg.content.includes('Vista previa del registro') && !isTyping"
                                         class="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3">
@@ -365,7 +365,8 @@ const selectQuickAction = (action) => {
                     </form>
                     <div class="text-center mt-2 flex items-center justify-center gap-1.5">
                         <Sparkles class="h-3 w-3 text-brand-400" />
-                        <span class="text-[10px] text-slate-400 font-medium tracking-wide">Multimodal. Powered by Llama 3.3</span>
+                        <span class="text-[10px] text-slate-400 font-medium tracking-wide">Multimodal. Powered by
+                            Gemini</span>
                     </div>
                 </div>
             </div>
@@ -425,6 +426,7 @@ const selectQuickAction = (action) => {
 .markdown-body li {
     margin-bottom: 0.25em;
 }
+
 .markdown-body table {
     width: 100%;
     border-collapse: collapse;

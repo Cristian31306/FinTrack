@@ -196,12 +196,13 @@ class AiAssistantService
 
         try {
             $response = Http::withoutVerifying()
+                ->retry(3, 500)
                 ->withHeaders(['X-goog-api-key' => config('services.gemini.key')])
                 ->post($url, $payload);
 
             if ($response->failed()) {
                 Log::error('[FinTrack AI] Gemini Native error', ['status' => $response->status(), 'body' => $response->body(), 'payload' => $payload]);
-                return "Lo siento, tuve un problema de comunicación con Gemini (Native).";
+                return "Lo siento, tuve un problema de comunicación con Gemini (Status: " . $response->status() . "). Intenta de nuevo.";
             }
 
             $candidate = $response->json('candidates.0');
@@ -655,27 +656,27 @@ class AiAssistantService
     {
         $openaiTools = [
             ['name' => 'prepare_purchase', 'description' => 'Paso 1: Prepara un gasto.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'credit_card_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'installments_count' => ['type' => 'integer'], 'purchase_date' => ['type' => 'string'], 'responsibles' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'percentage' => ['type' => 'number'], 'amount' => ['type' => 'number']]]], 'confidence' => ['type' => 'string', 'enum' => ['high', 'low']]], 'required' => ['name', 'total_amount', 'credit_card_id', 'category_id', 'confidence']]],
-            ['name' => 'create_purchase', 'description' => 'Paso 2: Guarda el gasto.', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'create_purchase', 'description' => 'Paso 2: Guarda el gasto.', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_category', 'description' => 'Prepara una nueva categoría.', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'icon' => ['type' => 'string', 'description' => 'Nombre Lucide en PascalCase (ej: Utensils, ShoppingBag)'], 'color' => ['type' => 'string']], 'required' => ['name', 'icon', 'color']]],
-            ['name' => 'create_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'create_category', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_responsible', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['name']]],
-            ['name' => 'create_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'create_responsible', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_card', 'parameters' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'franchise' => ['type' => 'string', 'enum' => ['Visa', 'Mastercard', 'American Express', 'Diners Club', 'Otro']], 'last_4_digits' => ['type' => 'string'], 'color' => ['type' => 'string', 'description' => 'Hexadecimal'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number', 'description' => 'EA %'], 'statement_day' => ['type' => 'integer'], 'payment_day' => ['type' => 'integer']], 'required' => ['name', 'franchise', 'credit_limit', 'statement_day', 'payment_day']]],
-            ['name' => 'create_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'create_card', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_edit_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'credit_limit' => ['type' => 'number'], 'interest_rate' => ['type' => 'number']], 'required' => ['card_id']]],
-            ['name' => 'edit_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'edit_card', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_delete_card', 'parameters' => ['type' => 'object', 'properties' => ['card_id' => ['type' => 'integer']], 'required' => ['card_id']]],
-            ['name' => 'delete_card', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'delete_card', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_edit_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'total_amount' => ['type' => 'number'], 'category_id' => ['type' => 'integer']], 'required' => ['purchase_id']]],
-            ['name' => 'edit_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'edit_purchase', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_delete_purchase', 'parameters' => ['type' => 'object', 'properties' => ['purchase_id' => ['type' => 'integer']], 'required' => ['purchase_id']]],
-            ['name' => 'delete_purchase', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'delete_purchase', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_edit_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'icon' => ['type' => 'string'], 'color' => ['type' => 'string']], 'required' => ['category_id']]],
-            ['name' => 'edit_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'edit_category', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_delete_category', 'parameters' => ['type' => 'object', 'properties' => ['category_id' => ['type' => 'integer']], 'required' => ['category_id']]],
-            ['name' => 'delete_category', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'delete_category', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_edit_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'email' => ['type' => 'string']], 'required' => ['responsible_id']]],
-            ['name' => 'edit_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
+            ['name' => 'edit_responsible', 'parameters' => ['type' => 'object']],
             ['name' => 'prepare_delete_responsible', 'parameters' => ['type' => 'object', 'properties' => ['responsible_id' => ['type' => 'integer']], 'required' => ['responsible_id']]],
             ['name' => 'delete_responsible', 'parameters' => ['type' => 'object', 'properties' => (object)[]]],
         ];
