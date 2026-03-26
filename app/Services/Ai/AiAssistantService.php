@@ -165,15 +165,16 @@ class AiAssistantService
             $model = 'models/' . $model;
         }
         $url     = self::BASE_URL . $model . ':generateContent';
-        Log::info('[FinTrack AI] Llamando a Gemini', ['url' => $url, 'model_config' => config('services.gemini.model')]);
 
-
+        $retries = $isWhatsApp ? 3 : self::HTTP_RETRIES;
+        $retryMs = $isWhatsApp ? 1500 : self::HTTP_RETRY_MS;
+        $timeout = $isWhatsApp ? 12 : 60;
 
         try {
             $response = Http::withoutVerifying()
-                ->retry(self::HTTP_RETRIES, self::HTTP_RETRY_MS)
+                ->retry($retries, $retryMs)
                 ->withHeaders(['X-goog-api-key' => config('services.gemini.key')])
-                ->timeout(60)
+                ->timeout($timeout)
                 ->post($url, $payload);
 
 
