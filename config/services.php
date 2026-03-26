@@ -36,13 +36,16 @@ return [
     ],
 
     'groq' => [
-        'key' => env('GROQ_API_KEY'),
+        'key'   => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
     ],
 
     'gemini' => [
         'key'   => env('GOOGLE_AI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'models/gemini-flash-latest'),
     ],
+
+    'ai_engine' => env('AI_ENGINE', 'gemini'),
 
 
     'twilio' => [

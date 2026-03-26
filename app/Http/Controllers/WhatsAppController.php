@@ -45,18 +45,23 @@ class WhatsAppController extends Controller
 
         try {
             $whatsappService = app(WhatsAppService::class);
-            $aiService = app(AiAssistantService::class);
+            $botService = app(\App\Services\Ai\WhatsAppBotService::class);
 
-            // 2. Procesar imagen si existe
+            // 2. Procesar imagen si existe (aunque el bot estructurado aún no procese OCR, lo dejamos para futura expansión)
             $image = null;
             if (!empty($mediaUrl)) {
                 $image = $whatsappService->downloadMedia($mediaUrl);
             }
 
-            // 3. Obtener respuesta de la IA
-            $response = $aiService->chat($user, $body ?? '', [], $image, true);
+            // 3. Manejar con el Bot Estructurado
+            $response = $botService->handle($user, $body ?? '', $from);
 
-            Log::info('[WhatsApp Webhook] Procesando respuesta', [
+            // Si el bot devuelve null (rara vez), enviamos el menú por defecto
+            if ($response === null) {
+                $response = "No entendí ese comando. Escribe 'menu' para ver las opciones disponibles.";
+            }
+
+            Log::info('[WhatsApp Webhook] Procesando respuesta bot', [
                 'has_buttons' => is_array($response) && isset($response['buttons'])
             ]);
 

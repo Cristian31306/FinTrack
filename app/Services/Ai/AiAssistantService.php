@@ -124,6 +124,7 @@ class AiAssistantService
         ?array $image   = null,
         bool   $isWhatsApp = false,
     ): string|array {
+        Log::info('[FinTrack AI] Chat iniciado', ['message' => $message, 'isWhatsApp' => $isWhatsApp]);
         // 1. Cancelación explícita
         if ($this->isRejection($message)) {
             $this->clearAllPending($user);
@@ -142,6 +143,13 @@ class AiAssistantService
 
         // 4. Forzar función si hay confirmación con caché pendiente
         $toolConfig = $this->resolveToolConfig($user, $message);
+
+        // 5. Motor de IA (Gemini o Groq)
+        $engine = config('services.ai_engine', 'gemini');
+
+        if ($engine === 'groq') {
+            return $this->callGroq($contents, $user, $context, $isWhatsApp, $systemPrompt, $toolConfig);
+        }
 
         return $this->callGemini($contents, $user, $context, $isWhatsApp, $systemPrompt, $toolConfig);
     }
@@ -240,6 +248,156 @@ class AiAssistantService
             ]);
             return $this->errorResponse("Ocurrió un error interno. Por favor intenta de nuevo.", $isWhatsApp);
         }
+    }
+
+    // =========================================================================
+    // LLAMADA A GROQ (Motor Alternativo / Fallback)
+    // =========================================================================
+
+    private function callGroq(
+        array   $contents,
+        User    $user,
+        array   $context,
+        bool    $isWhatsApp,
+        string  $systemPrompt,
+        ?array  $toolConfig,
+        ?string $forcedModel = null,
+    ): string|array {
+        set_time_limit(120);
+
+        $url     = 'https://api.groq.com/openai/v1/chat/completions';
+        $apiKey  = config('services.groq.key');
+        // Usar modelo forzado (fallback) o el configurado por defecto
+        $model   = $forcedModel ?: config('services.groq.model', 'llama-3.3-70b-versatile');
+        $payload = $this->buildGroqPayload($contents, $systemPrompt, $model, $toolConfig);
+
+        $retries = $isWhatsApp ? 3 : self::HTTP_RETRIES;
+        $retryMs = $isWhatsApp ? 1500 : self::HTTP_RETRY_MS;
+        $timeout = $isWhatsApp ? 12 : 60;
+
+        Log::info('[FinTrack AI] Intentando llamada a GROQ', [
+            'model'      => $model,
+            'isWhatsApp' => $isWhatsApp,
+            'timeout'    => $timeout
+        ]);
+
+        try {
+            $response = Http::withoutVerifying()
+                ->retry($retries, $retryMs)
+                ->withToken($apiKey)
+                ->timeout($timeout)
+                ->post($url, $payload);
+
+            if ($response->status() === 429) {
+                // FALLBACK: Si el modelo 70b falla por rate limit, intentamos con uno más ligero
+                $fallbacks = ['llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
+                $currentIdx = array_search($model, $fallbacks);
+                $nextModel = null;
+
+                if ($currentIdx === false) {
+                    $nextModel = $fallbacks[0]; // Empezar fallback
+                } elseif (isset($fallbacks[$currentIdx + 1])) {
+                    $nextModel = $fallbacks[$currentIdx + 1]; // Siguiente en la lista
+                }
+
+                if ($nextModel) {
+                    Log::warning("[FinTrack AI] Groq Rate Limit (429) en {$model}. Reintentando con {$nextModel}...");
+                    return $this->callGroq($contents, $user, $context, $isWhatsApp, $systemPrompt, $toolConfig, $nextModel);
+                }
+            }
+
+            if ($response->failed()) {
+                Log::error('[FinTrack AI] Groq HTTP error', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                return $this->errorResponse("Error en motor Groq (HTTP {$response->status()}).", $isWhatsApp);
+            }
+
+            $json = $response->json();
+            $msg  = data_get($json, 'choices.0.message');
+
+            $toolCalls = data_get($msg, 'tool_calls', []);
+            if (!empty($toolCalls)) {
+                $call = $toolCalls[0]['function'];
+                Log::info('[FinTrack AI] Groq disparando función', [
+                    'name' => $call['name'],
+                    'user_id' => $user?->id ?? 'NULL'
+                ]);
+                return $this->dispatchFunctionCall(
+                    $call['name'],
+                    json_decode($call['arguments'], true) ?? [],
+                    $user,
+                    $context,
+                    $isWhatsApp
+                );
+            }
+
+            // 2. Texto plano
+            $text = data_get($msg, 'content', '');
+            return $isWhatsApp
+                ? $this->formatForWhatsApp($text ?: "Entendido.")
+                : (Str::markdown($text) ?: "Entendido.");
+
+        } catch (Throwable $e) {
+            Log::error('[FinTrack AI] Excepción en callGroq', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse("Error interno en motor Groq.", $isWhatsApp);
+        }
+    }
+
+    private function buildGroqPayload(array $contents, string $systemPrompt, string $model, ?array $toolConfig): array
+    {
+        $messages = [['role' => 'system', 'content' => $systemPrompt]];
+
+        foreach ($contents as $content) {
+            $role = $content['role'] === 'model' ? 'assistant' : 'user';
+            $text = '';
+            foreach ($content['parts'] as $part) {
+                if (isset($part['text'])) {
+                    $text .= $part['text'] . "\n";
+                }
+            }
+            $messages[] = ['role' => $role, 'content' => trim($text)];
+        }
+
+        $payload = [
+            'model'       => $model,
+            'messages'    => $messages,
+            'temperature' => self::TEMPERATURE,
+            'max_tokens'  => self::MAX_TOKENS,
+            'tools'       => $this->getGroqToolsDefinition(),
+        ];
+
+        if ($toolConfig) {
+            $toolName = data_get($toolConfig, 'function_calling_config.allowed_function_names.0');
+            if ($toolName) {
+                $payload['tool_choice'] = ['type' => 'function', 'function' => ['name' => $toolName]];
+            }
+        }
+
+        return $payload;
+    }
+
+    private function getGroqToolsDefinition(): array
+    {
+        $geminiTools = $this->getToolsDefinition();
+        $groqTools   = [];
+
+        foreach ($geminiTools as $tool) {
+            $groqTools[] = [
+                'type'     => 'function',
+                'function' => [
+                    'name'        => $tool['name'],
+                    'description' => $tool['description'],
+                    'parameters'  => $tool['parameters'],
+                ]
+            ];
+        }
+
+        return $groqTools;
     }
 
     // =========================================================================
@@ -487,6 +645,11 @@ class AiAssistantService
     // =========================================================================
     // HANDLERS ESPECÍFICOS (lógica propia)
     // =========================================================================
+
+    public function preparePurchaseManual(User $user, array $args, bool $isWhatsApp): string|array
+    {
+        return $this->preparePurchase($args, $user, $this->buildUserContext($user), $isWhatsApp);
+    }
 
     private function preparePurchase(array $args, User $user, array $context, bool $isWhatsApp): string|array
     {
