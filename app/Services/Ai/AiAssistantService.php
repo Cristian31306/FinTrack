@@ -681,12 +681,17 @@ class AiAssistantService
             : $preview;
     }
 
-    private function executePurchase(User $user, bool $isWhatsApp): string
+    public function executePurchase(User $user, bool $isWhatsApp): string
     {
         return $this->executeGeneric(
             $user, 'purchase', $isWhatsApp,
             function (array $p) use ($user): void {
-                $purchase = $this->purchaseService->create($p, $user->id, $p['responsibles'] ?? null);
+                $responsibles = collect($p['responsibles'] ?? [])->map(fn($r) => [
+                    'responsible_person_id' => $r['responsible_id'] ?? $r['responsible_person_id'],
+                    'split_type' => $r['split_type'],
+                    'split_value' => $r['split_value']
+                ])->toArray();
+                $purchase = $this->purchaseService->create($p, $user->id, $responsibles);
                 // Guardamos el nombre para el mensaje de éxito
                 Cache::put("fintrack_last_purchase_name_{$user->id}", $purchase->name, now()->addMinutes(1));
                 Cache::put("fintrack_last_purchase_amount_{$user->id}", $purchase->total_amount, now()->addMinutes(1));
@@ -1134,7 +1139,7 @@ PROMPT;
     {
         $validIds = collect($context['responsibles'] ?? [])->pluck('id')->toArray();
         return collect($responsibles)
-            ->filter(fn($r) => in_array($r['responsible_id'] ?? 0, $validIds, true))
+            ->filter(fn($r) => in_array($r['responsible_id'] ?? $r['responsible_person_id'] ?? 0, $validIds, true))
             ->values()
             ->toArray();
     }

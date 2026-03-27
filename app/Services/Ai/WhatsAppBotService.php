@@ -27,31 +27,37 @@ class WhatsAppBotService
         $state = $this->getState($user);
         $cleanMsg = trim(mb_strtolower($message));
 
-        // Comandos globales
-        if ($cleanMsg === 'menu' || $cleanMsg === 'inicio' || $cleanMsg === 'hola' || $cleanMsg === 'ayuda') {
+        // Comandos globales (Escritura estricta)
+        if (in_array($cleanMsg, ['menu', 'inicio', 'hola', 'ayuda', '?', '/start'])) {
             return $this->showMainMenu($user);
         }
 
-        if ($cleanMsg === 'resumen' || $cleanMsg === 'deuda') {
+        if (in_array($cleanMsg, ['resumen', 'deuda', 'saldo', '3'])) {
             $this->clearState($user);
-            return $this->handleMenuSelection($user, 'resumen');
+            return $this->handleMenuSelection($user, '3');
         }
 
-        if ($cleanMsg === 'cancelar' || $cleanMsg === '0') {
+        if (in_array($cleanMsg, ['cancelar', '0', 'salir', 'no', 'detener'])) {
             $this->clearState($user);
-            return "Operación cancelada. ¿En qué más puedo ayudarte? Escribe 'menu' para ver opciones.";
+            return "❌ Operación cancelada. ¿En qué más puedo ayudarte? Escribe 'menu' para ver opciones.";
         }
 
         // Manejar según estado actual
-        return match ($state['step'] ?? 'idle') {
+        $response = match ($state['step'] ?? 'idle') {
             'awaiting_purchase_name'   => $this->handlePurchaseName($user, $message),
             'awaiting_purchase_amount' => $this->handlePurchaseAmount($user, $message),
+            'awaiting_purchase_date'   => $this->handlePurchaseDate($user, $message),
             'awaiting_purchase_category' => $this->handlePurchaseCategory($user, $message),
             'awaiting_purchase_card'   => $this->handlePurchaseCard($user, $message),
             'awaiting_purchase_installments' => $this->handlePurchaseInstallments($user, $message),
+            'awaiting_purchase_split'    => $this->handlePurchaseSplit($user, $message),
+            'awaiting_purchase_responsibles' => $this->handlePurchaseResponsibles($user, $message),
+            'awaiting_confirmation'    => $this->handleConfirmation($user, $message),
             'idle'                     => $this->handleMenuSelection($user, $cleanMsg),
-            default                    => null, 
+            default                    => $this->showMainMenu($user), 
         };
+
+        return $response ?? "No entendí ese comando. Escribe 'menu' para ver las opciones disponibles.";
     }
 
     private function showMainMenu(User $user): array
@@ -68,20 +74,22 @@ class WhatsAppBotService
 
     private function handleMenuSelection(User $user, string $msg): string|array|null
     {
-        if (str_contains($msg, '1') || str_contains($msg, 'registrar')) {
+        $clean = trim(mb_strtolower($msg));
+
+        if ($clean === '1' || str_contains($clean, 'registrar') || str_contains($clean, 'gasto') || str_contains($clean, 'compra')) {
             $this->setState($user, ['step' => 'awaiting_purchase_name']);
             return "💸 *Iniciando registro de gasto*\n\n¿Qué compraste? (Ej: Almuerzo, Gasolina, Netflix...)";
         }
 
-        if (str_contains($msg, '2') || str_contains($msg, 'tarjetas')) {
-            $cards = CreditCard::where('user_id', $user->id)->get();
+        if ($clean === '2' || str_contains($clean, 'tarjetas') || str_contains($clean, 'mis tarjetas')) {
+            $cards = CreditCard::where('user_id', $user->id)->orderBy('id')->get();
             if ($cards->isEmpty()) return "No tienes tarjetas registradas.";
             
             $text = "💳 *Tus Tarjetas:*\n" . $cards->map(fn($c) => "- {$c->name}")->implode("\n");
             return $text . "\n\nEscribe 'menu' para volver.";
         }
 
-        if (str_contains($msg, '3') || str_contains($msg, 'resumen')) {
+        if ($clean === '3' || str_contains($clean, 'resumen') || str_contains($clean, 'deuda')) {
             $summary = app(\App\Services\Fintrack\DebtSummaryService::class)->dashboard($user);
             $deuda = "$" . number_format($summary['total_debt'] ?? 0, 0, ',', '.');
             $vencido = "$" . number_format($summary['overdue_debt'] ?? 0, 0, ',', '.');
@@ -118,46 +126,108 @@ class WhatsAppBotService
 
         $state = $this->getState($user);
         $state['data']['total_amount'] = $amount;
+        $state['step'] = 'awaiting_purchase_date';
+        $this->setState($user, $state);
+
+        $hoy = now()->translatedFormat('d/m');
+
+        return "📅 *¿Cuándo realizaste este gasto?*\n\n"
+             . "1️⃣ Hoy ($hoy)\n"
+             . "2️⃣ Otra fecha (Escribe la fecha ej: 25/03)\n\n"
+             . "Responde con el número de tu elección.";
+    }
+
+    private function handlePurchaseDate(User $user, string $msg): string|array
+    {
+        $clean = trim(mb_strtolower($msg));
+        $date = null;
+
+        if ($clean === '1' || str_contains($clean, 'hoy')) {
+            $date = now()->toDateString();
+        } else {
+            // Intentar parsear fecha dd/mm o dd/mm/yyyy
+            try {
+                // Si solo mandan dd/mm, asumimos año actual
+                if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})$/', $clean, $matches)) {
+                    $date = now()->year . '-' . $matches[2] . '-' . $matches[1];
+                } else {
+                    $date = \Illuminate\Support\Carbon::parse($clean)->toDateString();
+                }
+            } catch (\Throwable) {
+                return "No entendí la fecha. Por favor escribe algo como '25/03' o selecciona '1' para Hoy.";
+            }
+        }
+
+        $state = $this->getState($user);
+        $state['data']['purchase_date'] = $date;
         $state['step'] = 'awaiting_purchase_category';
         $this->setState($user, $state);
 
-        $categories = Category::where('user_id', $user->id)->limit(10)->get();
+        $categories = Category::where('user_id', $user->id)->orderBy('id')->limit(10)->get();
+        $list = $categories->map(fn($c, $i) => ($i + 1) . "️⃣ " . $c->name)->implode("\n");
         
-        return [
-            'type' => 'list',
-            'text' => "🏷️ ¿En qué categoría clasificarías este gasto?",
-            'buttonText' => 'Elegir Categoría',
-            'options' => $categories->pluck('name')->map(fn($n) => Str::limit($n, 20))->toArray()
-        ];
+        return "🏷️ *¿En qué categoría clasificarías este gasto?*\n\n"
+             . "{$list}\n\n"
+             . "Responde con el número o nombre de la categoría.";
     }
 
     private function handlePurchaseCategory(User $user, string $categoryName): string|array
     {
-        $category = Category::where('user_id', $user->id)
-            ->whereRaw('LOWER(name) LIKE ?', ["%" . mb_strtolower($categoryName) . "%"])
-            ->first() ?? Category::where('user_id', $user->id)->first();
+        $categories = Category::where('user_id', $user->id)->orderBy('id')->limit(10)->get();
+        $category = null;
+
+        // Soporte para número
+        if (is_numeric(trim($categoryName))) {
+            $index = (int)trim($categoryName) - 1;
+            if (isset($categories[$index])) {
+                $category = $categories[$index];
+            }
+        }
+
+        if (!$category) {
+            $category = Category::where('user_id', $user->id)
+                ->whereRaw('LOWER(name) LIKE ?', ["%" . mb_strtolower($categoryName) . "%"])
+                ->first();
+        }
+
+        if (!$category) {
+            $list = $categories->map(fn($c, $i) => ($i + 1) . "️⃣ " . $c->name)->implode("\n");
+            return "⚠️ No encontré esa categoría. Por favor intenta de nuevo:\n\n{$list}";
+        }
 
         $state = $this->getState($user);
-        $state['data']['category_id'] = $category?->id ?? 1;
-        $state['data']['category_name'] = $category?->name ?? 'Gastos';
+        $state['data']['category_id'] = $category->id;
+        $state['data']['category_name'] = $category->name;
         $state['step'] = 'awaiting_purchase_card';
         $this->setState($user, $state);
 
-        $cards = CreditCard::where('user_id', $user->id)->get();
+        $cards = CreditCard::where('user_id', $user->id)->orderBy('id')->get();
+        $list = $cards->map(fn($c, $i) => ($i + 1) . "️⃣ " . $c->name)->implode("\n");
         
-        return [
-            'type' => 'list',
-            'text' => "💳 ¿Con qué tarjeta pagaste los $" . number_format($state['data']['total_amount'], 0, ',', '.') . "?",
-            'buttonText' => 'Seleccionar Tarjeta',
-            'options' => $cards->pluck('name')->toArray()
-        ];
+        $monto = number_format($state['data']['total_amount'], 0, ',', '.');
+        return "💳 *¿Con qué tarjeta pagaste los $$monto?*\n\n"
+             . "{$list}\n\n"
+             . "Responde con el número o nombre de la tarjeta.";
     }
 
     private function handlePurchaseCard(User $user, string $cardName): string|array
     {
-        $card = CreditCard::where('user_id', $user->id)
-            ->whereRaw('LOWER(name) LIKE ?', ["%" . mb_strtolower($cardName) . "%"])
-            ->first();
+        $cards = CreditCard::where('user_id', $user->id)->orderBy('id')->get();
+        $card = null;
+
+        // Soporte para número
+        if (is_numeric(trim($cardName))) {
+            $index = (int)trim($cardName) - 1;
+            if (isset($cards[$index])) {
+                $card = $cards[$index];
+            }
+        }
+
+        if (!$card) {
+            $card = CreditCard::where('user_id', $user->id)
+                ->whereRaw('LOWER(name) LIKE ?', ["%" . mb_strtolower($cardName) . "%"])
+                ->first();
+        }
 
         if (!$card) return "No encontré esa tarjeta. Elige una de la lista.";
 
@@ -167,11 +237,8 @@ class WhatsAppBotService
         $state['step'] = 'awaiting_purchase_installments';
         $this->setState($user, $state);
 
-        return [
-            'type' => 'buttons',
-            'text' => "⚡ ¿A cuántas cuotas?",
-            'buttons' => ['1 cuota', '12 cuotas', '24 cuotas']
-        ];
+        return "⚡ *¿A cuántas cuotas?*\n\n"
+             . "Escribe el número de cuotas (ej: 1, 3, 6, 12, 24...)";
     }
 
     private function handlePurchaseInstallments(User $user, string $msg): string|array
@@ -180,27 +247,124 @@ class WhatsAppBotService
         if ($installments <= 0) $installments = 1;
 
         $state = $this->getState($user);
-        $data = $state['data'];
-        $data['installments_count'] = $installments;
-        $data['purchase_date'] = now()->toDateString();
-        $data['category_id'] = Category::where('user_id', $user->id)->first()?->id ?? 1;
-        $data['confidence'] = 'high';
+        $state['data']['installments_count'] = $installments;
+        $state['data']['confidence'] = 'high';
+        $state['step'] = 'awaiting_purchase_split';
+        $this->setState($user, $state);
 
-        // Usamos el AiAssistantService para mostrar la confirmación final y manejar el caché
-        // Esto integra el Bot con el flujo de persistencia existente.
-        $this->clearState($user); // Clear state before calling preparePurchaseManual
+        return "👥 *¿Deseas dividir este gasto con alguien más?*\n\n"
+             . "1️⃣ No, solo yo\n"
+             . "2️⃣ Sí, repartir con otros\n\n"
+             . "Responde con el número de tu elección.";
+    }
 
-        // La confirmación final viene de preparePurchaseManual
-        $res = $this->aiService->preparePurchaseManual($user, $data, true);
+    private function handlePurchaseSplit(User $user, string $msg): string|array
+    {
+        $clean = trim($msg);
         
-        // Convertir la respuesta de confirmación a botones si es un texto
+        if ($clean === '1' || str_contains(mb_strtolower($clean), 'no')) {
+            return $this->goToConfirmation($user);
+        }
+
+        if ($clean === '2' || str_contains(mb_strtolower($clean), 'si')) {
+            $responsibles = \App\Models\ResponsiblePerson::where('user_id', $user->id)->orderBy('id')->get();
+            if ($responsibles->isEmpty()) {
+                return "⚠️ No tienes responsables registrados. " . $this->goToConfirmation($user);
+            }
+
+            $state = $this->getState($user);
+            $state['step'] = 'awaiting_purchase_responsibles';
+            $this->setState($user, $state);
+
+            $list = $responsibles->map(fn($r, $i) => ($i + 1) . "️⃣ " . $r->name)->implode("\n");
+            return "👥 *Selecciona los responsables (puedes elegir varios separando por coma, ej: 1, 2):*\n\n"
+                 . "{$list}\n\n"
+                 . "Responde con los números correspondientes.";
+        }
+
+        return "No entendí. ¿Deseas dividir el gasto?\n\n1️⃣ No\n2️⃣ Sí";
+    }
+
+    private function handlePurchaseResponsibles(User $user, string $msg): string|array
+    {
+        $responsibles = \App\Models\ResponsiblePerson::where('user_id', $user->id)->orderBy('id')->get();
+        // Limpiamos el mensaje para obtener solo números y comas
+        $clean = preg_replace('/[^0-9,]/', '', $msg);
+        $parts = explode(',', $clean);
+        $selectedIds = [];
+
+        foreach ($parts as $part) {
+            $index = (int)trim($part) - 1;
+            if (isset($responsibles[$index])) {
+                $selectedIds[] = $responsibles[$index]->id;
+            }
+        }
+
+        if (empty($selectedIds)) {
+            return "⚠️ No reconocí ningún número de la lista. Por favor intenta de nuevo.";
+        }
+
+        $state = $this->getState($user);
+        
+        // Preparar estructura para PurchaseService
+        // Dividimos el 100% entre (yo + responsables seleccionados)
+        $totalPeople = count($selectedIds) + 1;
+        $percentage = round(100 / $totalPeople, 2);
+        
+        $respData = [];
+        foreach ($selectedIds as $id) {
+            $respData[] = [
+                'responsible_id' => $id,
+                'split_type' => 'porcentaje',
+                'split_value' => $percentage
+            ];
+        }
+
+        $state['data']['responsibles'] = $respData;
+        $this->setState($user, $state);
+
+        return $this->goToConfirmation($user);
+    }
+
+    private function goToConfirmation(User $user): string|array
+    {
+        $state = $this->getState($user);
+        $state['step'] = 'awaiting_confirmation';
+        $this->setState($user, $state);
+
+        // Previsualización manual
+        $res = $this->aiService->preparePurchaseManual($user, $state['data'], true);
+        
         $text = is_array($res) ? ($res['text'] ?? '') : $res;
         
-        return [
-            'type' => 'buttons',
-            'text' => $text,
-            'buttons' => ['✅ Sí, registrar', '❌ No, cancelar']
-        ];
+        return "{$text}\n\n"
+             . "1️⃣ Sí, registrar\n"
+             . "2️⃣ No, cancelar\n\n"
+             . "Responde con el número de tu elección.";
+    }
+
+    private function handleConfirmation(User $user, string $msg): string|array
+    {
+        $clean = trim(mb_strtolower($msg));
+        
+        // Triggers de confirmación estrictos
+        $confirms = ['si', 'sí', '1', 'si, registrar', 'sí, registrar', 'dale', 'ok', 'listo'];
+        $rejects = ['no', '2', 'no, cancelar', 'cancelar', '0'];
+
+        if (in_array($clean, $confirms)) {
+            $state = $this->getState($user);
+            $res = app(AiAssistantService::class)->executePurchase($user, true);
+            $this->clearState($user);
+            
+            return is_array($res) ? ($res['text'] ?? "✅ ¡Gasto registrado!") : $res;
+        }
+
+        if (in_array($clean, $rejects)) {
+            $this->clearState($user);
+            return "❌ Operación cancelada. ¿En qué más puedo ayudarte?";
+        }
+
+        return "⚠️ No entendí. ¿Confirmas el registro?\n\n1️⃣ Sí\n2️⃣ No";
     }
 
     // --- HELPERS DE ESTADO ---
