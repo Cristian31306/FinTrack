@@ -35,7 +35,8 @@ class DebtSummaryService
 
         foreach ($cards as $card) {
             $this->cutService->refreshCutsForCard($card);
-            $cardDebt = 0.0;
+            $cardFullDebt = 0.0;
+            $cardPrincipalDebt = 0.0;
 
             $cuts = Cut::query()
                 ->where('credit_card_id', $card->id)
@@ -43,14 +44,24 @@ class DebtSummaryService
                 ->get();
 
             foreach ($cuts as $cut) {
-                $accrued = (float) PurchaseInstallment::query()->where('cut_id', $cut->id)->sum('total_amount');
-                $paid = (float) CardPayment::query()->where('cut_id', $cut->id)->sum('amount');
-                $remaining = max(0, round($accrued - $paid, 2));
-                $cardDebt += $remaining;
+                // Cálculo de Totales (Capital + Interés)
+                $accruedTotal = (float) PurchaseInstallment::query()->where('cut_id', $cut->id)->sum('total_amount');
+                $paidTotal = (float) CardPayment::query()->where('cut_id', $cut->id)->sum('amount');
+                $remainingTotal = max(0, round($accruedTotal - $paidTotal, 2));
+                
+                // Cálculo de Capital (Neto para uso de cupo)
+                $accruedPrincipal = (float) PurchaseInstallment::query()->where('cut_id', $cut->id)->sum('principal_amount');
+                // Asumimos que el pago amortiza proporcionalmente o primero al capital? 
+                // Por simplicidad para el "Uso de Cupo", calculamos el % de capital restante.
+                $ratio = $accruedTotal > 0.01 ? $remainingTotal / $accruedTotal : 0;
+                $remainingPrincipal = round($accruedPrincipal * $ratio, 2);
+
+                $cardFullDebt += $remainingTotal;
+                $cardPrincipalDebt += $remainingPrincipal;
 
                 // User share of this cut (proportional to remaining balance)
-                if ($accrued > 0.01) {
-                    $ratio = $remaining / $accrued;
+                if ($accruedTotal > 0.01) {
+                    $ratio = $remainingTotal / $accruedTotal;
                     $installments = PurchaseInstallment::query()
                         ->where('cut_id', $cut->id)
                         ->with('purchase.purchaseResponsibles')
@@ -66,7 +77,7 @@ class DebtSummaryService
                     }
                 }
 
-                if ($cut->status !== 'pagado' && $remaining >= 0.01) {
+                if ($cut->status !== 'pagado' && $remainingTotal >= 0.01) {
                     $upcomingCuts[] = [
                         'cut_id' => $cut->id,
                         'card_id' => $card->id,
@@ -74,8 +85,8 @@ class DebtSummaryService
                         'card_last_4' => $card->last_4_digits,
                         'period_start' => $cut->period_start->format('Y-m-d'),
                         'period_end' => $cut->period_end->format('Y-m-d'),
-                        'accrued' => $accrued,
-                        'remaining' => $remaining,
+                        'accrued' => $accruedTotal,
+                        'remaining' => $remainingTotal,
                         'status' => $cut->status,
                         'status_label' => $this->cutStatusLabel($cut->status),
                         'payment_day' => $card->payment_day,
@@ -84,10 +95,10 @@ class DebtSummaryService
                 }
             }
 
-            $totalDebt += $cardDebt;
+            $totalDebt += $cardFullDebt;
 
             $limit = (float) $card->credit_limit;
-            $utilization = $limit > 0 ? min(100, round(($cardDebt / $limit) * 100, 1)) : 0;
+            $utilization = $limit > 0 ? min(100, round(($cardPrincipalDebt / $limit) * 100, 1)) : 0;
 
             $cardSummaries[] = [
                 'id' => $card->id,
@@ -95,9 +106,10 @@ class DebtSummaryService
                 'franchise' => $card->franchise,
                 'last_4_digits' => $card->last_4_digits,
                 'credit_limit' => $limit,
-                'available_credit' => max(0, round($limit - $cardDebt, 2)),
+                'available_credit' => max(0, round($limit - $cardPrincipalDebt, 2)),
                 'annual_interest_ea' => (float) $card->annual_interest_ea,
-                'debt' => round($cardDebt, 2),
+                'debt' => round($cardPrincipalDebt, 2),
+                'full_debt' => round($cardFullDebt, 2),
                 'utilization_percent' => $utilization,
                 'cupo_alert' => $utilization >= 80,
                 'statement_day' => $card->statement_day,
