@@ -34,7 +34,8 @@ class AppServiceProvider extends ServiceProvider
                 $client->setClientSecret($config['clientSecret']);
                 $client->setAccessToken($client->fetchAccessTokenWithRefreshToken($config['refreshToken']));
 
-                $adapter = new GoogleDriveAdapter($client, $config['folderId'] ?? '/');
+                $service = new \Google\Service\Drive($client);
+                $adapter = new GoogleDriveAdapter($service, $config['folderId'] ?? '/');
                 $filesystem = new Filesystem($adapter);
 
                 return new \Illuminate\Filesystem\FilesystemAdapter($filesystem, $adapter, $config);
