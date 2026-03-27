@@ -21,4 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
+    })
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('backup:run')->daily()->at('01:00');
+        $schedule->command('backup:clean')->daily()->at('01:30');
     })->create();
