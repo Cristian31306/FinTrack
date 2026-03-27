@@ -40,7 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
             return null;
         }
 
-        return asset('storage/'.$this->avatar_path);
+        return '/storage/'.$this->avatar_path;
     }
 
     public function creditCards(): \Illuminate\Database\Eloquent\Relations\HasMany
