@@ -66,8 +66,8 @@ class ResponsibleSplitService
 
             if ($types[0] === 'porcentaje') {
                 $sum = array_sum(array_column($normalized, 'split_value'));
-                if (abs($sum - 100) > 0.05) {
-                    throw new InvalidArgumentException('Los porcentajes deben sumar 100%.');
+                if ($sum > 100.05) {
+                    throw new InvalidArgumentException('La suma de porcentajes no puede superar el 100%.');
                 }
             } else {
                 $sumOwed = array_sum(array_column($normalized, 'owed_amount'));

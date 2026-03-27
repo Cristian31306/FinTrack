@@ -2,10 +2,11 @@
 
 namespace App\Notifications;
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 
-class ResetPasswordSpanish extends ResetPassword
+class ResetPasswordSpanish extends ResetPassword implements ShouldQueue
 {
     /**
      * Get the mail representation of the notification.

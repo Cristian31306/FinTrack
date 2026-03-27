@@ -29,6 +29,7 @@ class DebtSummaryService
     {
         $cards = CreditCard::query()->where('user_id', $user->id)->get();
         $totalDebt = 0.0;
+        $userSharePending = 0.0;
         $cardSummaries = [];
         $upcomingCuts = [];
 
@@ -47,6 +48,24 @@ class DebtSummaryService
                 $remaining = max(0, round($accrued - $paid, 2));
                 $cardDebt += $remaining;
 
+                // User share of this cut (proportional to remaining balance)
+                if ($accrued > 0.01) {
+                    $ratio = $remaining / $accrued;
+                    $installments = PurchaseInstallment::query()
+                        ->where('cut_id', $cut->id)
+                        ->with('purchase.purchaseResponsibles')
+                        ->get();
+
+                    foreach ($installments as $ins) {
+                        $shares = $this->partiesForInstallmentShare($ins->purchase, (float) $ins->total_amount);
+                        foreach ($shares as $s) {
+                            if ($s['label'] === 'Yo') {
+                                $userSharePending += $s['amount'] * $ratio;
+                            }
+                        }
+                    }
+                }
+
                 if ($cut->status !== 'pagado' && $remaining >= 0.01) {
                     $upcomingCuts[] = [
                         'cut_id' => $cut->id,
@@ -55,6 +74,7 @@ class DebtSummaryService
                         'card_last_4' => $card->last_4_digits,
                         'period_start' => $cut->period_start->format('Y-m-d'),
                         'period_end' => $cut->period_end->format('Y-m-d'),
+                        'accrued' => $accrued,
                         'remaining' => $remaining,
                         'status' => $cut->status,
                         'status_label' => $this->cutStatusLabel($cut->status),
@@ -107,8 +127,6 @@ class DebtSummaryService
 
         $this->attachMovementsToUpcomingCuts($upcomingCuts);
 
-        $userShare = $this->userSharePending($user->id);
-
         $alerts = $this->buildAlerts($upcomingCuts);
 
         $spendingByCategory = Purchase::query()
@@ -132,26 +150,10 @@ class DebtSummaryService
             'total_debt' => round($totalDebt, 2),
             'cards' => $cardSummaries,
             'upcoming_cuts' => $upcomingCuts,
-            'user_share_pending' => round($userShare, 2),
+            'user_share_pending' => round($userSharePending, 2),
             'alerts' => $alerts,
             'spending_by_category' => $spendingByCategory,
         ];
-    }
-
-    private function userSharePending(int $userId): float
-    {
-        $purchases = Purchase::query()
-            ->where('user_id', $userId)
-            ->with('purchaseResponsibles')
-            ->get();
-
-        $total = 0.0;
-        foreach ($purchases as $p) {
-            $others = (float) $p->purchaseResponsibles->sum('owed_amount');
-            $total += max(0, round((float) $p->total_amount - $others, 2));
-        }
-
-        return $total;
     }
 
     /**
@@ -204,15 +206,17 @@ class DebtSummaryService
         foreach ($upcomingCuts as &$row) {
             $items = $byCut->get($row['cut_id'], collect());
             $movements = [];
+            $ratio = $row['accrued'] > 0 ? $row['remaining'] / $row['accrued'] : 0;
+
             foreach ($items as $ins) {
                 /** @var \App\Models\Purchase $purchase */
                 $purchase = $ins->purchase;
                 $movements[] = [
                     'purchase_name' => $purchase->name,
                     'installment_label' => $ins->installment_number.'/'.$purchase->installments_count,
-                    'amount' => round((float) $ins->total_amount, 2),
+                    'amount' => round((float) $ins->total_amount * $ratio, 2),
                     'statement_close_date' => $ins->statement_close_date->format('Y-m-d'),
-                    'parties' => $this->partiesForInstallmentShare($purchase, (float) $ins->total_amount),
+                    'parties' => $this->partiesForInstallmentShare($purchase, (float) $ins->total_amount * $ratio),
                 ];
             }
             $row['movements'] = $movements;

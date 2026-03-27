@@ -104,7 +104,7 @@ function deleteCategory(id) {
                                     {{ c.user_id ? 'Personalizada' : 'Sistema' }}
                                 </p>
                             </div>
-                            <div v-if="c.user_id" class="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div v-if="c.user_id" class="flex gap-2 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100">
                                 <button @click="openModal(c)" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-[#C8B07D]">
                                     <component :is="LucideIcons.Pencil" class="h-5 w-5" />
                                 </button>

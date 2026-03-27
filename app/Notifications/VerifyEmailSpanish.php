@@ -2,11 +2,12 @@
 
 namespace App\Notifications;
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Lang;
 
-class VerifyEmailSpanish extends VerifyEmail
+class VerifyEmailSpanish extends VerifyEmail implements ShouldQueue
 {
     /**
      * Get the mail representation of the notification.

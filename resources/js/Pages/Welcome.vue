@@ -34,6 +34,7 @@ const features = [
 
 // Estado para animar la tarjeta flotante
 const isHovered = ref(false);
+const showingMobileMenu = ref(false);
 
 const recentPurchases = [
     { name: 'Suscripción Digital', date: 'Hoy, 10:15 AM', amount: '$15.99', installments: '1 Cuota', icon: 'zap' },
@@ -61,10 +62,10 @@ const recentPurchases = [
         </div>
 
         <!-- Navigation -->
-        <nav class="relative z-50 flex items-center justify-between px-6 py-6 mx-auto max-w-7xl lg:px-12">
+        <nav class="relative z-50 flex items-center justify-between px-6 py-4 mx-auto max-w-7xl lg:px-12 lg:py-6">
             <div class="flex items-center gap-3">
                 <img src="/logo-full.png" alt="FinTrack Logo"
-                    class="h-32 w-auto hover:scale-105 transition-transform duration-300">
+                    class="h-20 lg:h-32 w-auto hover:scale-105 transition-transform duration-300">
             </div>
 
             <div
@@ -78,18 +79,62 @@ const recentPurchases = [
             <div class="flex items-center gap-4">
                 <template v-if="canLogin">
                     <Link v-if="$page.props.auth?.user" :href="route('dashboard')"
-                        class="px-6 py-2.5 text-xs font-black uppercase tracking-widest bg-gray-100 border border-black/5 rounded-md hover:bg-gray-200 transition-all text-[#111111]">
+                        class="px-5 py-2 text-[10px] lg:px-6 lg:py-2.5 lg:text-xs font-black uppercase tracking-widest bg-gray-100 border border-black/5 rounded-md hover:bg-gray-200 transition-all text-[#111111]">
                         Ir al Panel
                     </Link>
                     <template v-else>
                         <Link :href="route('login')"
-                            class="px-6 py-2.5 text-xs font-black uppercase tracking-widest border border-[#C8B07D]/30 rounded-md hover:bg-[#C8B07D] hover:text-[#111111] transition-all duration-500 shadow-xl shadow-[#C8B07D]/5">
+                            class="hidden sm:inline-block px-6 py-2.5 text-xs font-black uppercase tracking-widest border border-[#C8B07D]/30 rounded-md hover:bg-[#C8B07D] hover:text-[#111111] transition-all duration-500 shadow-xl shadow-[#C8B07D]/5">
                             Iniciar Sesión
                         </Link>
                     </template>
                 </template>
+
+                <!-- Mobile Hamburger -->
+                <button
+                    @click="showingMobileMenu = !showingMobileMenu"
+                    class="md:hidden p-2 text-gray-500 hover:text-[#C8B07D] transition-colors"
+                >
+                    <svg v-if="!showingMobileMenu" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg v-else class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
         </nav>
+
+        <!-- Mobile Menu Overlay -->
+        <transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0 -translate-y-4"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 -translate-y-4"
+        >
+            <div v-if="showingMobileMenu" class="fixed inset-0 z-40 bg-white md:hidden">
+                <div class="flex flex-col items-center justify-center h-full space-y-8 p-6">
+                    <img src="/logo-full.png" alt="FinTrack" class="h-24 w-auto mb-8">
+                    <a @click="showingMobileMenu = false" href="#" class="text-xl font-black uppercase tracking-widest text-[#111111]">Inicio</a>
+                    <a @click="showingMobileMenu = false" href="#features" class="text-xl font-black uppercase tracking-widest text-[#111111]">Características</a>
+                    <a @click="showingMobileMenu = false" href="#whatsapp" class="text-xl font-black uppercase tracking-widest text-[#111111]">Asistente</a>
+                    <a @click="showingMobileMenu = false" href="#security" class="text-xl font-black uppercase tracking-widest text-[#111111]">Seguridad</a>
+                    
+                    <div class="pt-8 w-full space-y-3">
+                        <Link v-if="!$page.props.auth?.user" :href="route('login')" @click="showingMobileMenu = false"
+                            class="block w-full text-center py-4 text-sm font-black uppercase tracking-widest border border-[#C8B07D]/30 rounded-xl">
+                            Iniciar Sesión
+                        </Link>
+                        <Link v-if="canRegister && !$page.props.auth?.user" :href="route('register')" @click="showingMobileMenu = false"
+                            class="block w-full text-center py-4 text-sm font-black uppercase tracking-widest bg-[#C8B07D] text-[#111111] rounded-xl">
+                            Registrarme
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </transition>
 
         <!-- Hero Section -->
         <main class="relative z-10 px-6 pt-16 pb-24 mx-auto max-w-7xl lg:px-12 lg:pt-24">
@@ -104,13 +149,13 @@ const recentPurchases = [
                             Inteligente</span>
                     </div>
 
-                    <h1 class="text-5xl font-black leading-[1.05] tracking-tight lg:text-7xl">
+                    <h1 class="text-4xl font-black leading-[1.1] tracking-tight sm:text-5xl lg:text-7xl">
                         Domina tus <span
                             class="text-transparent bg-clip-text bg-gradient-to-r from-[#C8B07D] via-[#E5D5B0] to-[#C8B07D]">Tarjetas</span>,
                         Optimiza tu Futuro.
                     </h1>
 
-                    <p class="text-xl leading-relaxed text-gray-600 font-medium max-w-xl">
+                    <p class="text-base sm:text-xl leading-relaxed text-gray-600 font-medium max-w-xl">
                         Toma el control absoluto de tus finanzas personales con la plataforma elegante e inteligente
                         para
                         gestionar todas tus tarjetas de crédito en un solo lugar. Simple, Seguro y Sofisticado.
@@ -295,13 +340,13 @@ const recentPurchases = [
                     </div>
                 </div>
 
-                <div class="grid gap-8 md:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-3 md:gap-8">
                     <div v-for="feature in features" :key="feature.title"
-                        class="group relative p-10 rounded-3xl bg-gray-50 border border-black/5 hover:border-[#C8B07D]/30 transition-all duration-700 hover:bg-white overflow-hidden shadow-sm hover:shadow-xl">
+                        class="group relative p-8 md:p-10 rounded-3xl bg-gray-50 border border-black/5 hover:border-[#C8B07D]/30 transition-all duration-700 hover:bg-white overflow-hidden shadow-sm hover:shadow-xl">
 
                         <!-- Feature Number Background -->
                         <div
-                            class="absolute -right-4 -bottom-4 text-[120px] font-black text-white/[0.02] leading-none select-none group-hover:text-[#C8B07D]/[0.03] transition-colors">
+                            class="absolute -right-4 -bottom-4 text-[80px] md:text-[120px] font-black text-white/[0.02] leading-none select-none group-hover:text-[#C8B07D]/[0.03] transition-colors">
                             {{ feature.number }}
                         </div>
 
@@ -363,12 +408,12 @@ const recentPurchases = [
             </section>
 
             <!-- WhatsApp Assistant Section -->
-            <section id="whatsapp" class="mt-40 scroll-mt-24">
+            <section id="whatsapp" class="mt-24 md:mt-40 scroll-mt-24">
                 <div
-                    class="relative overflow-hidden rounded-[3rem] bg-gray-50 border border-black/5 p-8 md:p-20 group shadow-xl">
+                    class="relative overflow-hidden rounded-[2.5rem] md:rounded-[3rem] bg-gray-50 border border-black/5 p-8 md:p-20 group shadow-xl">
                     <!-- Decorative background glow -->
                     <div
-                        class="absolute -top-24 -right-24 w-96 h-96 bg-[#C8B07D]/10 rounded-full blur-[100px] group-hover:bg-[#C8B07D]/20 transition-colors duration-700">
+                        class="absolute -top-24 -right-24 w-64 h-64 md:w-96 md:h-96 bg-[#C8B07D]/10 rounded-full blur-[100px] group-hover:bg-[#C8B07D]/20 transition-colors duration-700">
                     </div>
 
                     <div class="grid items-center gap-16 md:grid-cols-2">
@@ -439,11 +484,11 @@ const recentPurchases = [
                 <div class="flex flex-col items-center text-center space-y-4">
                     <div class="text-[10px] font-black text-[#C8B07D] uppercase tracking-[0.3em]">Seguridad y Privacidad
                         Total</div>
-                    <h2 class="text-4xl md:text-5xl font-black tracking-tighter uppercase text-[#111111]">Tu
+                    <h2 class="text-3xl md:text-5xl font-black tracking-tighter uppercase text-[#111111]">Tu
                         Tranquilidad es
                         Nuestra
                         Prioridad</h2>
-                    <p class="text-gray-600 max-w-2xl mx-auto font-medium">
+                    <p class="text-gray-600 text-sm md:text-base max-w-2xl mx-auto font-medium">
                         FinTrack está diseñado con la seguridad y la privacidad como núcleos fundamentales. No
                         conectamos con
                         tus bancos, tú tienes el

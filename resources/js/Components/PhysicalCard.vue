@@ -79,8 +79,8 @@ const secondaryTextColorClass = computed(() => {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <!-- Actions (Hidden by default, visible on hover) -->
-                    <div v-if="id && !isMockup" class="flex items-center gap-2 opacity-0 transition-all duration-300 group-hover/card:opacity-100 -translate-y-2 group-hover/card:translate-y-0">
+                    <!-- Actions (Visible on mobile, hidden and visible on hover in desktop) -->
+                    <div v-if="id && !isMockup" class="flex items-center gap-2 opacity-100 md:opacity-0 transition-all duration-300 md:group-hover/card:opacity-100 md:-translate-y-2 md:group-hover/card:translate-y-0">
                         <Link
                             :href="route('credit-cards.edit', id)"
                             class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-all hover:bg-white/40"

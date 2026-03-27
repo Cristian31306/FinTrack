@@ -67,16 +67,18 @@ function upcomingCardLabel(u) {
                     </h2>
                     <p class="mt-1 text-xs font-black uppercase tracking-[0.2em] text-gray-500">Resumen financiero institucional</p>
                 </div>
-                <div class="hidden sm:flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-4 sm:mt-0">
                     <Link :href="route('credit-cards.create')"
-                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95">
-                        <component :is="LucideIcons.CreditCard" class="h-5 w-5" />
-                        Nueva Tarjeta
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:px-5 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95">
+                        <component :is="LucideIcons.CreditCard" class="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span class="hidden xs:inline">Nueva Tarjeta</span>
+                        <span class="xs:hidden">Tarjeta</span>
                     </Link>
                     <Link :href="route('purchases.create')"
-                        class="inline-flex items-center gap-2 rounded-xl bg-[#C8B07D] px-5 py-2.5 text-xs font-black uppercase tracking-widest text-[#111111] shadow-xl shadow-[#C8B07D]/20 transition-all hover:bg-[#A68F5B] active:scale-95">
-                        <component :is="LucideIcons.Plus" class="h-5 w-5" />
-                        Nueva Compra
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#C8B07D] px-3 py-2 sm:px-5 sm:py-2.5 text-[9px] sm:text-xs font-black uppercase tracking-widest text-[#111111] shadow-xl shadow-[#C8B07D]/20 transition-all hover:bg-[#A68F5B] active:scale-95">
+                        <component :is="LucideIcons.Plus" class="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span class="hidden xs:inline">Nueva Compra</span>
+                        <span class="xs:hidden">Compra</span>
                     </Link>
                 </div>
             </div>
@@ -113,14 +115,14 @@ function upcomingCardLabel(u) {
                             class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#C8B07D]/5 transition-transform group-hover:scale-110">
                         </div>
                         <div class="relative">
-                            <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">Deuda Total Estimada
+                            <p class="text-[10px] sm:text-sm font-semibold tracking-wide text-slate-500 uppercase">Deuda Total Estimada
                             </p>
-                            <h3 class="mt-2 font-outfit text-4xl font-black tracking-tight text-slate-900">
+                            <h3 class="mt-1 sm:mt-2 font-outfit text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
                                 {{ money(total_debt) }}
                             </h3>
-                            <div class="mt-6 flex items-center gap-2">
+                            <div class="mt-4 sm:mt-6 flex items-center gap-2">
                                 <span class="inline-flex h-2 w-2 rounded-full bg-[#C8B07D] animate-pulse"></span>
-                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Actualizado hace un momento</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Actualizado</span>
                             </div>
                         </div>
                     </div>
@@ -154,20 +156,20 @@ function upcomingCardLabel(u) {
                                 <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">Gasto Mes
                                     (Categorías)
                                 </p>
-                                <div v-if="spending_by_category.length" class="mt-4 flex gap-6 items-center">
-                                    <div class="h-32 w-32 shrink-0">
+                                <div v-if="spending_by_category.length" class="mt-4 flex flex-col xs:flex-row gap-4 xs:gap-6 items-center">
+                                    <div class="h-28 w-28 sm:h-32 sm:w-32 shrink-0">
                                         <Doughnut :data="chartData" :options="chartOptions" />
                                     </div>
-                                    <div class="flex-1 space-y-2">
+                                    <div class="flex-1 w-full space-y-2">
                                         <div v-for="c in spending_by_category.slice(0, 3)" :key="c.name"
-                                            class="flex items-center justify-between">
+                                            class="flex items-center justify-between gap-4">
                                             <div class="flex items-center gap-1.5 min-w-0">
                                                 <component :is="LucideIcons[c.icon] || LucideIcons.Tag"
                                                     class="h-3 w-3 shrink-0" :style="{ color: c.color }" />
                                                 <span class="text-[10px] font-bold text-slate-600 truncate">{{ c.name
                                                     }}</span>
                                             </div>
-                                            <span class="text-[10px] font-black text-slate-900">{{ money(c.amount)
+                                            <span class="text-[10px] font-black text-slate-900 shrink-0">{{ money(c.amount)
                                                 }}</span>
                                         </div>
                                         <p v-if="spending_by_category.length > 3"
@@ -196,17 +198,17 @@ function upcomingCardLabel(u) {
                         <div class="grid gap-4">
                             <div v-for="c in cards" :key="c.id"
                                 class="overflow-hidden rounded-3xl border border-white bg-white/40 p-6 shadow-premium backdrop-blur-sm transition-all hover:bg-white/60">
-                                <div class="flex justify-between items-start mb-4">
+                                <div class="flex flex-col xs:flex-row justify-between items-start gap-2 mb-4">
                                     <div>
-                                        <p class="font-outfit text-lg font-black text-slate-900 tracking-tight">
+                                        <p class="font-outfit text-base sm:text-lg font-black text-slate-900 tracking-tight">
                                             {{ formatCardLabel(c) }}
                                         </p>
-                                        <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Cupo: {{
+                                        <p class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400">Cupo: {{
                                             money(c.credit_limit) }}</p>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="font-outfit text-xl font-bold text-slate-900">{{ money(c.debt) }}</p>
-                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Deuda
+                                    <div class="xs:text-right w-full xs:w-auto flex justify-between xs:block">
+                                        <p class="font-outfit text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{{ money(c.debt) }}</p>
+                                        <p class="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400">Deuda
                                             Actual
                                         </p>
                                     </div>
@@ -251,28 +253,28 @@ function upcomingCardLabel(u) {
                             <div v-for="u in upcoming_cuts" :key="u.cut_id"
                                 class="overflow-hidden rounded-[2.5rem] border border-white bg-white/70 shadow-2xl backdrop-blur-2xl">
                                 <div class="p-8">
-                                    <div class="flex justify-between items-start mb-8">
-                                        <div>
+                                    <div class="flex flex-col xs:flex-row justify-between items-start gap-4 mb-8">
+                                        <div class="w-full">
                                             <div :class="[
-                                                'mb-3 inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm',
+                                                'mb-3 inline-flex rounded-full px-3 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-sm',
                                                 u.focus_context === 'corte_anterior' ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700'
                                             ]">
                                                 {{ u.focus_context === 'corte_anterior' ? 'Prioridad: Saldo Pendiente' : 'Cierre Próximo' }}
                                             </div>
-                                            <h4 class="font-outfit text-2xl font-black text-slate-900 tracking-tight">
+                                            <h4 class="font-outfit text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                                                 {{ upcomingCardLabel(u) }}
                                             </h4>
-                                            <p class="text-sm font-medium text-slate-500">
+                                            <p class="text-xs sm:text-sm font-medium text-slate-500">
                                                 Cierre: <span class="text-slate-900">{{ formatDateDMY(u.period_end)
                                                     }}</span>
                                             </p>
                                         </div>
-                                        <div class="text-right">
-                                            <p class="font-outfit text-3xl font-black text-brand-600">{{
+                                        <div class="w-full xs:w-auto xs:text-right flex items-center justify-between xs:block gap-4 border-t xs:border-0 pt-4 xs:pt-0">
+                                            <p class="font-outfit text-2xl sm:text-3xl font-black text-brand-600">{{
                                                 money(u.remaining) }}
                                             </p>
                                             <Link :href="route('cuts.show', u.cut_id)"
-                                                class="mt-2 inline-flex font-bold text-xs text-brand-600 uppercase tracking-widest hover:underline">
+                                                class="inline-flex font-bold text-[10px] sm:text-xs text-brand-600 uppercase tracking-widest hover:underline">
                                                 Pagar ahora →</Link>
                                         </div>
                                     </div>

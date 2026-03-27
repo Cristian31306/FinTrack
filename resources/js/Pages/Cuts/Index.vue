@@ -34,7 +34,8 @@ function money(n) {
         <div class="py-10">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="overflow-hidden rounded-[2rem] border border-white bg-white/60 shadow-premium backdrop-blur-xl transition-all">
-                    <div class="overflow-x-auto">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
                                 <tr class="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -93,6 +94,50 @@ function money(n) {
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile Card View -->
+                    <div class="md:hidden divide-y divide-slate-100">
+                        <div v-for="c in cuts.data" :key="c.id" class="p-6 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8B07D]/10 text-[#C8B07D] font-black">
+                                        {{ c.credit_card?.bank_name?.charAt(0) || 'CC' }}
+                                    </div>
+                                    <div>
+                                        <p class="font-black text-[#111111] text-sm">{{ formatCardLabel(c.credit_card) }}</p>
+                                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                                            {{ formatDateDMY(c.period_start) }} → {{ formatDateDMY(c.period_end) }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span :class="[
+                                    'rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-widest',
+                                    c.status === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                                ]">
+                                    {{ c.status }}
+                                </span>
+                            </div>
+
+                            <div class="flex justify-between items-end border-t border-slate-50 pt-4">
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total / Pendiente</p>
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-xs text-slate-500 line-through opacity-50">{{ money(c.total_accrued) }}</span>
+                                        <span class="font-black text-[#C8B07D] text-lg">{{ money(c.remaining_balance) }}</span>
+                                    </div>
+                                </div>
+                                <Link
+                                    :href="route('cuts.show', c.id)"
+                                    class="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] border border-[#C8B07D]/20 rounded-lg px-3 py-2 bg-[#C8B07D]/5"
+                                >
+                                    Detalle
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                     
                     <div v-if="cuts.links?.length > 3" class="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-8 py-6">

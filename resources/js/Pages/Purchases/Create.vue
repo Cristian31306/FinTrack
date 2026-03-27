@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { formatCardLabel } from '@/utils/cardLabel';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { User, Plus, Check, Tag } from 'lucide-vue-next';
 
 const props = defineProps({
     creditCards: Array,
@@ -14,7 +15,9 @@ const props = defineProps({
     categories: Array,
 });
 
+const LucideIcons = { User, Plus, Check, Tag };
 const splitMode = ref('porcentaje');
+const selectedPeopleIds = ref(['me']);
 
 const form = useForm({
     credit_card_id: props.creditCards[0]?.id ?? '',
@@ -26,8 +29,6 @@ const form = useForm({
     responsibles: [],
 });
 
-import * as LucideIcons from 'lucide-vue-next';
-
 watch(splitMode, (mode) => {
     form.responsibles = form.responsibles.map((r) => ({
         ...r,
@@ -36,17 +37,79 @@ watch(splitMode, (mode) => {
     }));
 });
 
-function addRow() {
-    form.responsibles.push({
-        responsible_person_id: '',
-        split_type: splitMode.value,
-        split_value: '',
-    });
-}
+// Helper functions for UX
+const isPersonSelected = (id) => selectedPeopleIds.value.includes(id);
 
-function removeRow(i) {
-    form.responsibles.splice(i, 1);
-}
+const getPersonName = (id) => {
+    if (id === 'me') return 'Yo';
+    return props.responsiblePeople.find(p => p.id === id)?.name || 'Desconocido';
+};
+
+const togglePerson = (person) => {
+    if (person.id === 'me') {
+        if (isPersonSelected('me')) {
+            selectedPeopleIds.value = selectedPeopleIds.value.filter(id => id !== 'me');
+        } else {
+            selectedPeopleIds.value.push('me');
+        }
+    } else {
+        const idx = form.responsibles.findIndex(r => r.responsible_person_id === person.id);
+        if (idx > -1) {
+            form.responsibles.splice(idx, 1);
+            selectedPeopleIds.value = selectedPeopleIds.value.filter(id => id !== person.id);
+        } else {
+            form.responsibles.push({
+                responsible_person_id: person.id,
+                split_type: splitMode.value,
+                split_value: ''
+            });
+            selectedPeopleIds.value.push(person.id);
+        }
+    }
+};
+
+const distributeEqually = () => {
+    const count = selectedPeopleIds.value.length;
+    if (count === 0) return;
+
+    if (splitMode.value === 'porcentaje') {
+        const share = Math.floor(100 / count * 100) / 100;
+        form.responsibles.forEach(r => {
+            r.split_value = share;
+        });
+    } else {
+        const total = parseFloat(form.total_amount) || 0;
+        const share = Math.floor(total / count * 100) / 100;
+        form.responsibles.forEach(r => {
+            r.split_value = share;
+        });
+    }
+};
+
+const totalAssignedPercent = computed(() => {
+    const others = form.responsibles.reduce((acc, r) => acc + Number(r.split_value || 0), 0);
+    return isPersonSelected('me') ? 100 : others;
+});
+
+const totalAssignedAmount = computed(() => {
+    const others = form.responsibles.reduce((acc, r) => acc + Number(r.split_value || 0), 0);
+    const total = parseFloat(form.total_amount) || 0;
+    return isPersonSelected('me') ? total : others;
+});
+
+const getProgressWidth = () => {
+    if (splitMode.value === 'porcentaje') return Math.min(100, totalAssignedPercent.value);
+    const total = parseFloat(form.total_amount) || 0;
+    if (total <= 0) return 0;
+    return Math.min(100, (totalAssignedAmount.value / total) * 100);
+};
+
+const getProgressBarColor = () => {
+    const width = getProgressWidth();
+    if (width >= 100) return 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+    if (width > 0) return 'bg-[#C8B07D]';
+    return 'bg-gray-200';
+};
 
 function submit() {
     form.responsibles = form.responsibles.filter(
@@ -201,91 +264,107 @@ function submit() {
                             required
                         />
                     </div>
-
-                    <div class="border-t border-gray-100 pt-4">
-                        <h3 class="font-medium text-gray-900">
-                            Responsables (opcional)
-                        </h3>
-                        <p class="mt-1 text-xs text-gray-500">
-                            Porcentajes deben sumar 100%. Montos no pueden
-                            superar el total.
-                        </p>
-                        <div class="mt-2 flex gap-4 text-sm">
-                            <label class="inline-flex items-center gap-2">
-                                <input
-                                    v-model="splitMode"
-                                    type="radio"
-                                    value="porcentaje"
-                                />
-                                Porcentaje
-                            </label>
-                            <label class="inline-flex items-center gap-2">
-                                <input
-                                    v-model="splitMode"
-                                    type="radio"
-                                    value="monto"
-                                />
-                                Monto fijo
-                            </label>
-                        </div>
-                        <div
-                            v-for="(row, i) in form.responsibles"
-                            :key="i"
-                            class="mt-3 grid gap-2 sm:grid-cols-12 sm:items-end"
-                        >
-                            <div class="sm:col-span-6">
-                                <select
-                                    v-model="row.responsible_person_id"
-                                    class="block w-full rounded-md border-gray-300 text-sm shadow-sm"
-                                    required
-                                >
-                                    <option value="">
-                                        Seleccionar persona
-                                    </option>
-                                    <option
-                                        v-for="p in responsiblePeople"
-                                        :key="p.id"
-                                        :value="p.id"
-                                    >
-                                        {{ p.name }}
-                                    </option>
-                                </select>
+                    <div class="border-t border-gray-100 pt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-[#111111] uppercase tracking-tight">
+                                    Dividir Cuenta (Opcional)
+                                </h3>
+                                <p class="mt-0.5 text-[11px] text-gray-500 font-medium">
+                                    Selecciona quiénes comparten este gasto contigo
+                                </p>
                             </div>
-                            <div class="sm:col-span-4">
-                                <TextInput
-                                    v-model="row.split_value"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    class="block w-full text-sm"
-                                    :placeholder="
-                                        splitMode === 'porcentaje'
-                                            ? '%'
-                                            : 'Monto'
-                                    "
-                                />
-                            </div>
-                            <div class="sm:col-span-2">
-                                <button
+                            <div class="flex bg-gray-100 p-1 rounded-xl">
+                                <button 
                                     type="button"
-                                    class="text-sm text-red-600 hover:underline"
-                                    @click="removeRow(i)"
+                                    @click="splitMode = 'porcentaje'"
+                                    :class="['px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all', splitMode === 'porcentaje' ? 'bg-white text-[#C8B07D] shadow-sm' : 'text-gray-400']"
                                 >
-                                    Quitar
+                                    %
+                                </button>
+                                <button 
+                                    type="button"
+                                    @click="splitMode = 'monto'"
+                                    :class="['px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all', splitMode === 'monto' ? 'bg-white text-[#C8B07D] shadow-sm' : 'text-gray-400']"
+                                >
+                                    $
                                 </button>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            class="mt-3 text-[10px] font-black uppercase tracking-widest text-[#C8B07D] hover:underline"
-                            @click="addRow"
-                        >
-                            + Añadir responsable
-                        </button>
-                        <InputError
-                            class="mt-2"
-                            :message="form.errors.responsibles"
-                        />
+
+                        <!-- Chips de Selección Rápida -->
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button
+                                v-for="person in [{ id: 'me', name: 'Yo' }, ...responsiblePeople]"
+                                :key="person.id"
+                                type="button"
+                                @click="togglePerson(person)"
+                                :class="[
+                                    'flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-bold transition-all',
+                                    isPersonSelected(person.id)
+                                        ? 'bg-[#C8B07D]/10 border-[#C8B07D] text-[#C8B07D] shadow-sm'
+                                        : 'bg-white border-gray-200 text-gray-500 hover:border-[#C8B07D]/50'
+                                ]"
+                            >
+                                <component :is="LucideIcons.User" class="h-3.5 w-3.5" />
+                                {{ person.name }}
+                                <component 
+                                    :is="isPersonSelected(person.id) ? LucideIcons.Check : LucideIcons.Plus" 
+                                    class="h-3 w-3" 
+                                />
+                            </button>
+                        </div>
+
+                        <!-- Barra de Progreso -->
+                        <div v-if="form.responsibles.length > 0" class="mt-6 space-y-2">
+                            <div class="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                                <span :class="getProgressBarColor().includes('green') ? 'text-green-600' : 'text-gray-400'">
+                                    Total Asignado: {{ splitMode === 'porcentaje' ? totalAssignedPercent + '%' : '$' + totalAssignedAmount }}
+                                </span>
+                                <button 
+                                    v-if="form.responsibles.length > 1"
+                                    type="button"
+                                    @click="distributeEqually"
+                                    class="text-[#C8B07D] hover:underline"
+                                >
+                                    Dividir Equitativamente
+                                </button>
+                            </div>
+                            <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                    class="h-full transition-all duration-500"
+                                    :class="getProgressBarColor()"
+                                    :style="{ width: getProgressWidth() + '%' }"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <!-- Inputs de Ajuste Fino -->
+                        <div class="mt-4 space-y-3">
+                            <div
+                                v-for="(row, i) in form.responsibles"
+                                :key="i"
+                                class="flex items-center gap-3 bg-gray-50/50 p-3 rounded-2xl border border-gray-100"
+                            >
+                                <div class="flex-1">
+                                    <span class="text-xs font-bold text-gray-700">{{ getPersonName(row.responsible_person_id) }}</span>
+                                </div>
+                                <div class="w-32 relative">
+                                    <TextInput
+                                        v-model="row.split_value"
+                                        type="number"
+                                        step="0.01"
+                                        class="!py-2 !px-3 !text-xs !bg-white border-none shadow-sm focus:ring-1"
+                                        :placeholder="splitMode === 'porcentaje' ? '%' : 'Monto'"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">
+                                        {{ splitMode === 'porcentaje' ? '%' : '$' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <InputError class="mt-2" :message="form.errors.responsibles" />
                     </div>
 
                     <PrimaryButton class="w-full justify-center py-4" :disabled="form.processing">

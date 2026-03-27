@@ -50,7 +50,8 @@ function destroy(id) {
                 <div
                     class="overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-premium"
                 >
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <!-- Desktop Table -->
+                    <table class="hidden md:table min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50/50">
                             <tr>
                                 <th
@@ -130,6 +131,56 @@ function destroy(id) {
                             </tr>
                         </tbody>
                     </table>
+
+                    <!-- Mobile Card View -->
+                    <div class="md:hidden divide-y divide-gray-100">
+                        <div
+                            v-for="p in purchases.data"
+                            :key="p.id"
+                            class="p-4 space-y-3"
+                        >
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                    {{ formatDateDMY(p.purchase_date) }}
+                                </span>
+                                <div class="flex items-center gap-3">
+                                    <Link
+                                        :href="route('purchases.show', p.id)"
+                                        class="text-[10px] font-black uppercase tracking-widest text-[#C8B07D] underline"
+                                    >
+                                        Ver
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        class="text-[10px] font-black uppercase tracking-widest text-red-500 underline"
+                                        @click="destroy(p.id)"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-3">
+                                <div 
+                                    v-if="p.category"
+                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                                    :style="{ backgroundColor: p.category.color + '20', color: p.category.color }"
+                                >
+                                    <component :is="LucideIcons[p.category.icon] || LucideIcons.Tag" class="h-5 w-5" />
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="font-bold text-gray-900 truncate">{{ p.name }}</h4>
+                                    <p class="text-xs text-gray-500">{{ formatCardLabel(p.credit_card) }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-black text-gray-900">{{ money(p.total_amount) }}</p>
+                                    <p class="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                        {{ p.installments_count }} {{ p.installments_count === 1 ? 'Cuota' : 'Cuotas' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <p
                         v-if="!purchases.data?.length"
                         class="p-6 text-center text-gray-500"

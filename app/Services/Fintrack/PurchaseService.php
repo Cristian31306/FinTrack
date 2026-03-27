@@ -37,33 +37,7 @@ class PurchaseService
                 'purchase_date' => $data['purchase_date'],
             ]);
 
-            $schedule = $this->calculator->buildSchedule(
-                (float) $purchase->total_amount,
-                (int) $purchase->installments_count,
-                (float) $card->annual_interest_ea
-            );
-
-            foreach ($schedule as $idx => $row) {
-                $num = $idx + 1;
-                $close = $this->dates->statementCloseForInstallment(
-                    $purchase->purchase_date,
-                    (int) $card->statement_day,
-                    $num
-                );
-                $cut = $this->cuts->ensureCutForStatementClose($card, $close);
-
-                PurchaseInstallment::query()->create([
-                    'purchase_id' => $purchase->id,
-                    'cut_id' => $cut->id,
-                    'installment_number' => $num,
-                    'principal_amount' => $row['principal'],
-                    'interest_amount' => $row['interest'],
-                    'total_amount' => $row['total'],
-                    'statement_close_date' => $close->toDateString(),
-                ]);
-
-                $this->cuts->recalculateCutTotals($cut);
-            }
+            $this->syncInstallments($purchase, $card);
 
             if ($responsibles !== null && $responsibles !== []) {
                 $this->splits->syncForPurchase($purchase, $responsibles, $userId);
@@ -89,8 +63,12 @@ class PurchaseService
             }
 
             // 2. Actualizar las propiedades fundamentales (esto cambia todo el juego matemático)
+            $card = CreditCard::query()
+                ->where('user_id', $purchase->user_id)
+                ->findOrFail($data['credit_card_id']);
+
             $purchase->fill([
-                'credit_card_id' => $data['credit_card_id'],
+                'credit_card_id' => $card->id,
                 'category_id' => $data['category_id'] ?? null,
                 'name' => $data['name'],
                 'total_amount' => $data['total_amount'],
@@ -100,7 +78,7 @@ class PurchaseService
             $purchase->save();
 
             // 3. Reconstruir Amortización y Cuotas usando el core
-            $this->buildSchedule($purchase);
+            $this->syncInstallments($purchase, $card);
 
             // 4. Reconstruir Responsables
             if (count($responsibles) > 0) {
@@ -133,5 +111,36 @@ class PurchaseService
                 }
             }
         });
+    }
+
+    private function syncInstallments(Purchase $purchase, CreditCard $card): void
+    {
+        $schedule = $this->calculator->buildSchedule(
+            (float) $purchase->total_amount,
+            (int) $purchase->installments_count,
+            (float) $card->annual_interest_ea
+        );
+
+        foreach ($schedule as $idx => $row) {
+            $num = $idx + 1;
+            $close = $this->dates->statementCloseForInstallment(
+                $purchase->purchase_date,
+                (int) $card->statement_day,
+                $num
+            );
+            $cut = $this->cuts->ensureCutForStatementClose($card, $close);
+
+            PurchaseInstallment::query()->create([
+                'purchase_id' => $purchase->id,
+                'cut_id' => $cut->id,
+                'installment_number' => $num,
+                'principal_amount' => $row['principal'],
+                'interest_amount' => $row['interest'],
+                'total_amount' => $row['total'],
+                'statement_close_date' => $close->toDateString(),
+            ]);
+
+            $this->cuts->recalculateCutTotals($cut);
+        }
     }
 }

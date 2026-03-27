@@ -52,14 +52,8 @@ class RegisteredUserController extends Controller
         // Sembrar categorías por defecto
         $this->categoryService->seedDefaultCategories($user);
 
-        // Enviar mensaje de bienvenida por WhatsApp
-        try {
-            $whatsappService = app(\App\Services\Ai\WhatsAppService::class);
-            $message = "¡Hola {$user->name}! Bienvenido a FinTrack AI. Ya puedes registrar tus gastos enviándome un mensaje o una foto de tus recibos por este medio. 🚀";
-            $whatsappService->sendMessage("whatsapp:{$user->phone_number}", $message);
-        } catch (\Exception $e) {
-            \Log::error("Error enviando bienvenida WhatsApp: " . $e->getMessage());
-        }
+        // Enviar mensaje de bienvenida por WhatsApp (Asíncrono)
+        \App\Jobs\WelcomeWhatsAppJob::dispatch($user);
 
         event(new Registered($user));
 
