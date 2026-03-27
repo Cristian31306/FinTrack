@@ -96,9 +96,44 @@ class WhatsAppBotService
             
             $text = "📉 *Resumen de tu Deuda:*\n\n"
                   . "💰 *Deuda Total:* {$deuda}\n"
-                  . "⚠️ *Vencido:* {$vencido}\n"
-                  . "📅 *Cortes Próximos:* " . count($summary['upcoming_cuts'] ?? []) . "\n\n"
-                  . "Escribe 'menu' para volver.";
+                  . "⚠️ *Vencido:* {$vencido}\n";
+
+            if (!empty($summary['upcoming_cuts'])) {
+                $next = $summary['upcoming_cuts'][0];
+                $payAmount = "$" . number_format($next['remaining'], 0, ',', '.');
+                $card = $next['card_name'];
+                
+                // Intentar construir una fecha de pago amigable
+                $periodEnd = \Carbon\Carbon::parse($next['period_end']);
+                $paymentDate = $periodEnd->day($next['payment_day']);
+                // Si el día de pago es menor al de corte, suele ser del mes siguiente
+                if ($next['payment_day'] < $periodEnd->day) {
+                    $paymentDate = $paymentDate->addMonth();
+                }
+                $fechaStr = $paymentDate->translatedFormat('d \d\e M');
+
+                $text .= "🗓️ *Próximo Pago:* {$payAmount}\n"
+                       . "💳 *Tarjeta:* {$card}\n"
+                       . "📅 *Límite:* {$fechaStr}\n";
+
+                if (!empty($next['summary_by_party'])) {
+                    $text .= "\n👥 *Desglose este corte:*\n";
+                    foreach ($next['summary_by_party'] as $p) {
+                        $amt = "$" . number_format($p['amount'], 0, ',', '.');
+                        $text .= "• {$p['label']}: {$amt}\n";
+                    }
+                }
+            }
+
+            if (!empty($summary['debts_by_party'])) {
+                $text .= "\n👤 *Deuda Total por Persona:*\n";
+                foreach ($summary['debts_by_party'] as $p) {
+                    $amt = "$" . number_format($p['amount'], 0, ',', '.');
+                    $text .= "• {$p['label']}: {$amt}\n";
+                }
+            }
+
+            $text .= "\nEscribe 'menu' para volver.";
             return $text;
         }
 

@@ -32,6 +32,7 @@ class DebtSummaryService
         $userSharePending = 0.0;
         $cardSummaries = [];
         $upcomingCuts = [];
+        $debtsByParty = [];
 
         foreach ($cards as $card) {
             $this->cutService->refreshCutsForCard($card);
@@ -70,9 +71,14 @@ class DebtSummaryService
                     foreach ($installments as $ins) {
                         $shares = $this->partiesForInstallmentShare($ins->purchase, (float) $ins->total_amount);
                         foreach ($shares as $s) {
-                            if ($s['label'] === 'Yo') {
-                                $userSharePending += $s['amount'] * $ratio;
+                            $lbl = $s['label'];
+                            $shareAmt = $s['amount'] * $ratio;
+                            
+                            if ($lbl === 'Yo') {
+                                $userSharePending += $shareAmt;
                             }
+                            
+                            $debtsByParty[$lbl] = ($debtsByParty[$lbl] ?? 0.0) + $shareAmt;
                         }
                     }
                 }
@@ -163,6 +169,10 @@ class DebtSummaryService
             'cards' => $cardSummaries,
             'upcoming_cuts' => $upcomingCuts,
             'user_share_pending' => round($userSharePending, 2),
+            'debts_by_party' => collect($debtsByParty)->map(fn($amt, $lbl) => [
+                'label' => $lbl,
+                'amount' => round($amt, 2),
+            ])->values()->toArray(),
             'alerts' => $alerts,
             'spending_by_category' => $spendingByCategory,
         ];
