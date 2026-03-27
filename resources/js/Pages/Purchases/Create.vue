@@ -7,15 +7,13 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { formatCardLabel } from '@/utils/cardLabel';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { User, Plus, Check, Tag } from 'lucide-vue-next';
+import * as LucideIcons from 'lucide-vue-next';
 
 const props = defineProps({
     creditCards: Array,
     responsiblePeople: Array,
     categories: Array,
 });
-
-const LucideIcons = { User, Plus, Check, Tag };
 const splitMode = ref('porcentaje');
 const selectedPeopleIds = ref(['me']);
 

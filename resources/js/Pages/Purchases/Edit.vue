@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { formatCardLabel } from '@/utils/cardLabel';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { User, Plus, Check, Tag } from 'lucide-vue-next';
+import * as LucideIcons from 'lucide-vue-next';
 
 const props = defineProps({
     purchase: Object,
@@ -15,8 +15,6 @@ const props = defineProps({
     responsiblePeople: Array,
     categories: Array,
 });
-
-const LucideIcons = { User, Plus, Check, Tag };
 
 const defaultSplitMode = props.purchase.purchase_responsibles?.length 
     ? props.purchase.purchase_responsibles[0].split_type 
