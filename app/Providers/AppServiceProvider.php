@@ -33,10 +33,17 @@ class AppServiceProvider extends ServiceProvider
             Storage::extend('google_drive', function ($app, $config) {
                 try {
                     $client = new GoogleClient();
-                    $client->setClientId($config['clientId']);
-                    $client->setClientSecret($config['clientSecret']);
                     
-                    $tokens = $client->fetchAccessTokenWithRefreshToken($config['refreshToken']);
+                    // Validar presencia de llaves críticas
+                    if (empty($config['client_id']) || empty($config['client_secret']) || empty($config['refresh_token'])) {
+                        Log::error('Google Drive Config Error: Missing credentials in filesystems.php');
+                        throw new \Exception('Missing Google Drive credentials.');
+                    }
+
+                    $client->setClientId($config['client_id']);
+                    $client->setClientSecret($config['client_secret']);
+                    
+                    $tokens = $client->fetchAccessTokenWithRefreshToken($config['refresh_token']);
                     
                     if (isset($tokens['error'])) {
                         Log::error('Google Drive Auth Error: ' . ($tokens['error_description'] ?? $tokens['error']));
@@ -46,7 +53,7 @@ class AppServiceProvider extends ServiceProvider
                     $client->setAccessToken($tokens);
 
                     $service = new \Google\Service\Drive($client);
-                    $adapter = new GoogleDriveAdapter($service, $config['folderId'] ?? '/');
+                    $adapter = new GoogleDriveAdapter($service, $config['folder_id'] ?? '/');
                     $filesystem = new Filesystem($adapter);
 
                     return new \Illuminate\Filesystem\FilesystemAdapter($filesystem, $adapter, $config);
