@@ -18,7 +18,7 @@
 
         <!-- PWA Meta Tags -->
         <link rel="manifest" href="/manifest.json">
-        <meta name="theme-color" content="#7c3aed">
+        <meta name="theme-color" content="#f97316">
         <link rel="apple-touch-icon" href="/favicon.ico">
         
         <script>
