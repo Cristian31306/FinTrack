@@ -2,12 +2,12 @@
 
 namespace App\Notifications;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Lang;
 
-class VerifyEmailSpanish extends VerifyEmail implements ShouldQueue
+// ⚠️ Sin ShouldQueue: el email de verificación se envía sincrónicamente
+// para garantizar que el usuario lo reciba inmediatamente al registrarse.
+class VerifyEmailSpanish extends VerifyEmail
 {
     /**
      * Get the mail representation of the notification.
@@ -27,3 +27,4 @@ class VerifyEmailSpanish extends VerifyEmail implements ShouldQueue
             ->line('Si no creaste una cuenta, no es necesario realizar ninguna otra acción.');
     }
 }
+

@@ -17,8 +17,8 @@ const form = useForm({
     last_4_digits: '',
     credit_limit: '',
     annual_interest_ea: '0',
-    statement_day: 15,
-    payment_day: 5,
+    statement_day: '15',
+    payment_day: '5',
     color: '#4f46e5',
 });
 
@@ -65,7 +65,7 @@ function submit() {
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
                     <!-- Left: Card Preview -->
-                    <div class="sticky top-24 self-start">
+                    <div class="lg:sticky lg:top-24 lg:self-start">
                         <p class="mb-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">Vista Previa</p>
                         <PhysicalCard 
                             :name="form.name || 'TU NOMBRE AQUÍ'"
@@ -74,7 +74,8 @@ function submit() {
                             :color="form.color"
                         />
                         
-                        <div class="mt-8 rounded-3xl bg-[#C8B07D]/5 p-6 border border-[#C8B07D]/20">
+                        <!-- Tip: oculto en móvil, visible en desktop -->
+                        <div class="hidden lg:block mt-8 rounded-3xl bg-[#C8B07D]/5 p-6 border border-[#C8B07D]/20">
                             <div class="flex gap-3">
                                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C8B07D]/10 text-[#C8B07D]">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -148,12 +149,26 @@ function submit() {
                                         :class="{ 'ring-2 ring-slate-200': form.color === color }"
                                         @click="form.color = color"
                                     ></button>
-                                    <div class="relative h-10 w-10 overflow-hidden rounded-full border-2 border-slate-200">
-                                        <input 
-                                            type="color" 
-                                            v-model="form.color"
-                                            class="absolute -inset-2 h-14 w-14 cursor-pointer"
+                                    <!-- Custom color picker button -->
+                                    <div class="relative group" title="Color personalizado">
+                                        <div
+                                            class="h-10 w-10 rounded-full cursor-pointer border-4 transition-all hover:scale-110 overflow-hidden"
+                                            :style="{ borderColor: !colorPresets.includes(form.color) ? form.color : 'transparent' }"
+                                            :class="{ 'ring-2 ring-slate-200': !colorPresets.includes(form.color) }"
+                                            style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);"
                                         >
+                                            <div class="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white drop-shadow" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="color"
+                                            v-model="form.color"
+                                            class="absolute inset-0 opacity-0 w-full h-full cursor-pointer rounded-full"
+                                            title="Elegir color personalizado"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -216,7 +231,24 @@ function submit() {
 
                         </div>
 
-                        <div class="pt-6">
+                        <!-- Tip: solo visible en móvil, dentro del formulario -->
+                        <div class="lg:hidden rounded-2xl bg-[#C8B07D]/5 p-4 border border-[#C8B07D]/20">
+                            <div class="flex gap-3 items-start">
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#C8B07D]/10 text-[#C8B07D]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-black uppercase tracking-tight text-[#111111]">Dato importante</h4>
+                                    <p class="mt-1 text-xs font-medium text-gray-500 leading-relaxed">
+                                        Los días de corte y pago son fundamentales para que FinTrack calcule tus deudas correctamente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
                             <PrimaryButton class="w-full justify-center py-4" :disabled="form.processing">
                                 Registrar Tarjeta
                             </PrimaryButton>

@@ -31,8 +31,8 @@ class WelcomeWhatsAppJob implements ShouldQueue
             $message = "¡Hola {$this->user->name}! Bienvenido a FinTrack AI. Ya puedes registrar tus gastos enviándome un mensaje o una foto de tus recibos por este medio. 🚀";
             $whatsappService->sendMessage("whatsapp:{$this->user->phone_number}", $message);
         } catch (\Exception $e) {
+            // No relanzamos la excepción: si WhatsApp falla, el registro no debe verse afectado.
             Log::error("Error enviando bienvenida WhatsApp en Job: " . $e->getMessage());
-            throw $e;
         }
     }
 }

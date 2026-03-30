@@ -2,11 +2,12 @@
 
 namespace App\Notifications;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 
-class ResetPasswordSpanish extends ResetPassword implements ShouldQueue
+// ⚠️ Sin ShouldQueue: el email de reset se envía sincrónicamente
+// para que el usuario reciba el enlace de recuperación de inmediato.
+class ResetPasswordSpanish extends ResetPassword
 {
     /**
      * Get the mail representation of the notification.
@@ -25,3 +26,4 @@ class ResetPasswordSpanish extends ResetPassword implements ShouldQueue
             ->line('Si no solicitaste un restablecimiento de contraseña, no es necesario realizar ninguna otra acción.');
     }
 }
+
