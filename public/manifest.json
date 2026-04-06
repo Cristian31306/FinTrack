@@ -11,5 +11,31 @@
             "sizes": "192x192 512x512",
             "type": "image/x-icon"
         }
+    ],
+    "shortcuts": [
+        {
+            "name": "Nueva Compra",
+            "short_name": "Compra",
+            "description": "Registrar una nueva compra rápidamente",
+            "url": "/purchases/create",
+            "icons": [
+                {
+                    "src": "/favicon.ico",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Ver Cortes",
+            "short_name": "Cortes",
+            "description": "Ver estados de cuenta y cierres",
+            "url": "/cuts",
+            "icons": [
+                {
+                    "src": "/favicon.ico",
+                    "sizes": "192x192"
+                }
+            ]
+        }
     ]
 }

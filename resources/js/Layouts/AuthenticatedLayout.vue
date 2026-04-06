@@ -266,6 +266,17 @@ const showingNavigationDropdown = ref(false);
             
             <!-- Global AI Assistant Chat -->
             <AiAssistant />
+
+            <!-- Floating Action Button (FAB) for Mobile Quick Purchase -->
+            <Link 
+                :href="route('purchases.create')"
+                class="fixed bottom-6 right-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[#111111] text-white shadow-2xl transition-all hover:scale-105 active:scale-95 md:hidden"
+            >
+                <div class="absolute -z-10 h-full w-full animate-ping rounded-full bg-[#C8B07D]/20"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                </svg>
+            </Link>
         </div>
     </div>
 </template>
