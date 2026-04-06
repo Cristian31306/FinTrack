@@ -19,7 +19,7 @@
         <!-- PWA Meta Tags -->
         <link rel="manifest" href="/manifest.json">
         <meta name="theme-color" content="#f97316">
-        <link rel="apple-touch-icon" href="/favicon.ico">
+        <link rel="apple-touch-icon" href="/pwa-icon.png">
         
         <script>
             if ('serviceWorker' in navigator) {

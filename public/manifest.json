@@ -7,9 +7,16 @@
     "theme_color": "#f97316",
     "icons": [
         {
-            "src": "/favicon.ico",
-            "sizes": "192x192 512x512",
-            "type": "image/x-icon"
+            "src": "/pwa-icon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/pwa-icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ],
     "shortcuts": [
@@ -20,8 +27,9 @@
             "url": "/purchases/create",
             "icons": [
                 {
-                    "src": "/favicon.ico",
-                    "sizes": "192x192"
+                    "src": "/pwa-icon.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
                 }
             ]
         },
@@ -32,8 +40,9 @@
             "url": "/cuts",
             "icons": [
                 {
-                    "src": "/favicon.ico",
-                    "sizes": "192x192"
+                    "src": "/pwa-icon.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
                 }
             ]
         }
