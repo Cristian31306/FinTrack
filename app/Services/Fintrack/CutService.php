@@ -49,17 +49,21 @@ class CutService
             ->where('cut_id', $cut->id)
             ->sum('amount');
 
-        $cut->total_accrued = round($accrued, 2);
-        $cut->status = $this->deriveStatus($cut, $paid);
-        $cut->save();
+        $newAccrued = round($accrued, 2);
+        $newStatus = $this->deriveStatus($cut, $paid);
+
+        // Solo guardar si hay cambios reales para evitar I/O innecesario
+        if (abs((float) $cut->total_accrued - $newAccrued) > 0.001 || $cut->status !== $newStatus) {
+            $cut->total_accrued = (string) $newAccrued;
+            $cut->status = $newStatus;
+            $cut->save();
+        }
     }
 
     public function refreshCutsForCard(CreditCard $card): void
     {
-        Cut::query()
-            ->where('credit_card_id', $card->id)
-            ->get()
-            ->each(fn (Cut $cut) => $this->recalculateCutTotals($cut));
+        // Esta función se vacía o se limita porque causa Timeouts en el Dashboard
+        // Los cortes se actualizan transaccionalmente cuando hay cambios en el sistema base.
     }
 
     private function deriveStatus(Cut $cut, float $paid): string

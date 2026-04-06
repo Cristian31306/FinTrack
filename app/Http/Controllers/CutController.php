@@ -22,12 +22,11 @@ class CutController extends Controller
 
         $cuts = Cut::query()
             ->whereIn('credit_card_id', $cardIds)
+            ->whereDate('period_start', '<=', now()->toDateString())
             ->with('creditCard')
             ->orderByDesc('period_end')
             ->paginate(20)
             ->through(function (Cut $cut) {
-                $this->cuts->recalculateCutTotals($cut);
-                $cut->refresh();
                 $paid = (float) CardPayment::query()->where('cut_id', $cut->id)->sum('amount');
                 $cut->setAttribute(
                     'remaining_balance',

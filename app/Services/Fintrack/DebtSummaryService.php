@@ -35,7 +35,6 @@ class DebtSummaryService
         $debtsByParty = [];
 
         foreach ($cards as $card) {
-            $this->cutService->refreshCutsForCard($card);
             $cardFullDebt = 0.0;
             $cardPrincipalDebt = 0.0;
 
@@ -44,16 +43,42 @@ class DebtSummaryService
                 ->orderBy('period_end')
                 ->get();
 
+            $cutIds = $cuts->pluck('id');
+
+            // Consultas optimizadas agrupadas para evitar N+1
+            $accruedByCut = PurchaseInstallment::query()
+                ->whereIn('cut_id', $cutIds)
+                ->selectRaw('cut_id, sum(total_amount) as total, sum(principal_amount) as principal')
+                ->groupBy('cut_id')
+                ->pluck('total', 'cut_id');
+
+            $principalByCut = PurchaseInstallment::query()
+                ->whereIn('cut_id', $cutIds)
+                ->selectRaw('cut_id, sum(principal_amount) as principal')
+                ->groupBy('cut_id')
+                ->pluck('principal', 'cut_id');
+
+            $paidByCut = CardPayment::query()
+                ->whereIn('cut_id', $cutIds)
+                ->selectRaw('cut_id, sum(amount) as total')
+                ->groupBy('cut_id')
+                ->pluck('total', 'cut_id');
+
+            // Pre-cargar TODAS las cuotas con sus responsables para evitar N+1 en el cálculo de participación
+            $installmentsGrouped = PurchaseInstallment::query()
+                ->whereIn('cut_id', $cutIds)
+                ->with(['purchase.purchaseResponsibles.responsiblePerson'])
+                ->get()
+                ->groupBy('cut_id');
+
             foreach ($cuts as $cut) {
-                // Cálculo de Totales (Capital + Interés)
-                $accruedTotal = (float) PurchaseInstallment::query()->where('cut_id', $cut->id)->sum('total_amount');
-                $paidTotal = (float) CardPayment::query()->where('cut_id', $cut->id)->sum('amount');
+                // Cálculo de Totales usando los arrays precargados
+                $accruedTotal = (float) ($accruedByCut[$cut->id] ?? 0);
+                $paidTotal = (float) ($paidByCut[$cut->id] ?? 0);
                 $remainingTotal = max(0, round($accruedTotal - $paidTotal, 2));
-                
+
                 // Cálculo de Capital (Neto para uso de cupo)
-                $accruedPrincipal = (float) PurchaseInstallment::query()->where('cut_id', $cut->id)->sum('principal_amount');
-                // Asumimos que el pago amortiza proporcionalmente o primero al capital? 
-                // Por simplicidad para el "Uso de Cupo", calculamos el % de capital restante.
+                $accruedPrincipal = (float) ($principalByCut[$cut->id] ?? 0);
                 $ratio = $accruedTotal > 0.01 ? $remainingTotal / $accruedTotal : 0;
                 $remainingPrincipal = round($accruedPrincipal * $ratio, 2);
 
@@ -63,21 +88,18 @@ class DebtSummaryService
                 // User share of this cut (proportional to remaining balance)
                 if ($accruedTotal > 0.01) {
                     $ratio = $remainingTotal / $accruedTotal;
-                    $installments = PurchaseInstallment::query()
-                        ->where('cut_id', $cut->id)
-                        ->with('purchase.purchaseResponsibles')
-                        ->get();
+                    $installments = $installmentsGrouped->get($cut->id, collect());
 
                     foreach ($installments as $ins) {
                         $shares = $this->partiesForInstallmentShare($ins->purchase, (float) $ins->total_amount);
                         foreach ($shares as $s) {
                             $lbl = $s['label'];
                             $shareAmt = $s['amount'] * $ratio;
-                            
+
                             if ($lbl === 'Yo') {
                                 $userSharePending += $shareAmt;
                             }
-                            
+
                             $debtsByParty[$lbl] = ($debtsByParty[$lbl] ?? 0.0) + $shareAmt;
                         }
                     }
