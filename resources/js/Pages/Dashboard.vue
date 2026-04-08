@@ -52,6 +52,34 @@ function upcomingCardLabel(u) {
         last_4_digits: u.card_last_4,
     });
 }
+
+function groupMovementsByParty(movements) {
+    if (!movements) return {};
+    const groups = {};
+    movements.forEach(m => {
+        m.parties.forEach(p => {
+            if (!groups[p.label]) {
+                groups[p.label] = [];
+            }
+            groups[p.label].push({
+                ...m,
+                party_amount: p.amount
+            });
+        });
+    });
+
+    // Ordenar: "Yo" primero, luego alfabético
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+        if (a === 'Yo') return -1;
+        if (b === 'Yo') return 1;
+        return a.localeCompare(b);
+    });
+
+    return sortedKeys.reduce((acc, key) => {
+        acc[key] = groups[key];
+        return acc;
+    }, {});
+}
 </script>
 
 <template>
@@ -319,29 +347,33 @@ function upcomingCardLabel(u) {
                                             </svg>
                                         </summary>
                                         <div
-                                            class="mt-4 space-y-4 px-2 pb-2 overflow-hidden transition-all duration-300">
-                                            <div v-for="(m, mi) in u.movements" :key="mi"
-                                                class="rounded-2xl border border-slate-50 bg-white/50 p-4">
-                                                <div class="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <p
-                                                            class="text-xs font-black uppercase tracking-tight text-slate-900">
-                                                            {{
-                                                            m.purchase_name }}</p>
-                                                        <p class="text-[10px] font-bold text-slate-400">Cuota {{
-                                                            m.installment_label }}</p>
-                                                    </div>
-                                                    <p class="font-outfit text-sm font-bold text-slate-900">{{
-                                                        money(m.amount)
-                                                        }}</p>
-                                                </div>
-                                                <div v-if="m.parties.length > 1"
-                                                    class="pt-2 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
-                                                    <div v-for="party in m.parties" :key="party.label"
-                                                        class="text-[10px] font-bold">
-                                                        <span class="text-slate-400">{{ party.label }}:</span>
-                                                        <span class="ml-1 text-slate-600">{{ money(party.amount)
-                                                            }}</span>
+                                            class="mt-4 space-y-6 px-2 pb-2">
+                                            <div v-for="(groupMovements, partyLabel) in groupMovementsByParty(u.movements)" :key="partyLabel" class="space-y-3">
+                                                <h5 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-2 flex items-center gap-2">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-brand-400"></span>
+                                                    {{ partyLabel }}
+                                                </h5>
+                                                <div class="space-y-3">
+                                                    <div v-for="(m, mi) in groupMovements" :key="mi"
+                                                        class="rounded-2xl border border-slate-50 bg-white/50 p-4 transition-all hover:bg-white/80">
+                                                        <div class="flex justify-between items-start">
+                                                            <div>
+                                                                <p
+                                                                    class="text-xs font-black uppercase tracking-tight text-slate-900">
+                                                                    {{ m.purchase_name }}
+                                                                </p>
+                                                                <p class="text-[10px] font-bold text-slate-400">Cuota {{
+                                                                    m.installment_label }}</p>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <p class="font-outfit text-sm font-black text-slate-900">
+                                                                    {{ money(m.party_amount) }}
+                                                                </p>
+                                                                <p v-if="m.parties.length > 1" class="text-[8px] font-bold text-slate-400 uppercase">
+                                                                    De {{ money(m.amount) }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
